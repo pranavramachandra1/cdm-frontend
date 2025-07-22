@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/* Google Fonts import - Updated to include both font families */
+@import url('https://fonts.googleapis.com/css2?display=swap&family=Manrope:wght@400;500;700;800&family=Noto+Sans:wght@400;500;700;900');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+:root {
+  /* Updated to match both designs */
+  --background: #f9fafb; /* gray-50 from Tailwind */
+  --foreground: #111418; /* Primary text color from first HTML */
+  
+  /* Colors from the task manager design */
+  --gray-light: #eaedf0; /* Background for buttons and inputs */
+  --blue-light: #b8cee4; /* Accent color for active states */
+  --text-secondary: #5e7387; /* Secondary text color */
+  --border-color: #d5dbe2; /* Border color for inputs */
+  
+  /* Colors from the landing page design */
+  --primary: #d32f2f; /* Red primary color */
+  --primary-darker: #b71c1c; /* Darker red for hover */
+  --secondary: #4CAF50; /* Green secondary color */
+  --accent: #263238; /* Dark gray accent */
+  --main-bg: #e0f2f1; /* Light teal background */
+  --landing-bg: #f5f5f5; /* Landing page background */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  /* Font families for both designs */
+  --font-sans: Manrope, "Noto Sans", sans-serif;
+  --font-landing: Poppins, sans-serif;
+  --font-mono: "SF Mono", Monaco, "Inconsolata", "Roboto Mono", "Source Code Pro", "Ubuntu Mono", monospace;
+  --font-headings: "SF Mono", Monaco, "Inconsolata", "Roboto Mono", "Source Code Pro", "Ubuntu Mono", monospace;
+  
+  /* Custom color tokens for Tailwind */
+  --color-gray-light: var(--gray-light);
+  --color-blue-light: var(--blue-light);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border-color);
+  --color-primary: var(--primary);
+  --color-primary-darker: var(--primary-darker);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-main-bg: var(--main-bg);
+  --color-landing-bg: var(--landing-bg);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  /* Default to task manager font */
+  font-family: Manrope, "Noto Sans", sans-serif;
+}
+
+/* Landing page specific styling */
+.landing-page {
+  font-family: Poppins, sans-serif;
+  background-color: var(--landing-bg);
+}
+
+.main-bg {
+  background-color: var(--main-bg);
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.bg-primary {
+  background-color: var(--primary);
+}
+
+.text-secondary {
+  color: var(--secondary);
+}
+
+.bg-secondary {
+  background-color: var(--secondary);
+}
+
+.bg-accent {
+  background-color: var(--accent);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.hover-bg-primary-darker:hover {
+  background-color: var(--primary-darker);
+}
+
+/* Custom component styles to match the task manager */
+.toggle-switch {
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;
+}
+
+/* Form input styles to match the design */
+.form-input {
+  background-color: var(--background);
+  border-color: var(--border-color);
+  color: var(--foreground);
+}
+
+.form-input:focus {
+  border-color: var(--border-color);
+  outline: none;
+  ring: 0;
+}
+
+/* Button styles to match both designs */
+.btn-primary {
+  background-color: var(--blue-light);
+  color: var(--foreground);
+}
+
+.btn-secondary {
+  background-color: var(--gray-light);
+  color: var(--foreground);
+}
+
+.btn-landing-primary {
+  background-color: var(--primary);
+  color: white;
+  transition: background-color 0.3s;
+}
+
+.btn-landing-primary:hover {
+  background-color: var(--primary-darker);
+}
+
+/* Utility classes for custom colors */
+.bg-gray-light {
+  background-color: var(--gray-light);
+}
+
+.bg-blue-light {
+  background-color: var(--blue-light);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.border-custom {
+  border-color: var(--border-color);
+}
+
+/* Landing page specific utilities */
+.bg-landing {
+  background-color: var(--landing-bg);
+}
+
+.bg-main {
+  background-color: var(--main-bg);
+}
+
+/* Heading and title styles using SF Mono */
+h1, h2, h3, h4, h5, h6,
+.heading,
+.title {
+  font-family: "SF Mono", Monaco, "Inconsolata", "Roboto Mono", "Source Code Pro", "Ubuntu Mono", monospace;
+}
+
+/* Material Icons support */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
