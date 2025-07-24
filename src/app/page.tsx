@@ -6,10 +6,6 @@ import Image from 'next/image';
 export default function HomePage() {
   const [showDashboard] = useState(false);
 
-  // Functions to toggle between landing page and dashboard
-  // const showMainDashboard = () => setShowDashboard(true);
-  // const showLandingPage = () => setShowDashboard(false);
-
   const oauthSignIn = () => {
     window.location.href = "/api/auth/login";
   };

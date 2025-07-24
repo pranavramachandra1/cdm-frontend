@@ -1,0 +1,354 @@
+'use client';
+
+import { useState } from 'react';
+
+interface GoogleUserInfo {
+  id: string;
+  email: string;
+  name: string;
+  given_name: string;
+  family_name: string;
+  picture?: string;
+}
+
+interface User {
+  id?: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  google_id: string;
+}
+
+interface SessionData {
+  google: GoogleUserInfo;
+  user: User;
+  isNewUser: boolean;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  list: string;
+}
+
+type NavigationItem = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'completed' | 'trash';
+
+const BASE_URL = process.env.BASE_URL
+
+interface DashboardClientProps {
+  userSessionData: SessionData;
+
+}
+
+export default function DashboardClient({ userSessionData }: DashboardClientProps) {
+    
+  
+  const { user, google, isNewUser } = userSessionData;
+
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: '1', title: 'Buy groceries', description: 'Grocery shopping', completed: false, list: 'Inbox' },
+    { id: '2', title: 'Schedule meeting', description: 'Meeting with Alex', completed: false, list: 'Inbox' },
+    { id: '3', title: 'Draft proposal', description: 'Project proposal', completed: false, list: 'Inbox' },
+    { id: '4', title: 'Go to the gym', description: 'Gym workout', completed: false, list: 'Inbox' },
+    { id: '5', title: 'Attend book club', description: 'Book club', completed: false, list: 'Inbox' },
+  ]);
+
+  const [activeNav, setActiveNav] = useState<NavigationItem>('inbox');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0]);
+  const [taskName, setTaskName] = useState('');
+
+  const toggleTaskCompletion = (taskId: string) => {
+    setTasks(tasks.map(task => 
+      task.id === taskId ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const updateTaskName = (newName: string) => {
+    if (selectedTask) {
+      setTasks(tasks.map(task => 
+        task.id === selectedTask.id ? { ...task, title: newName } : task
+      ));
+      setSelectedTask({ ...selectedTask, title: newName });
+    }
+  };
+
+  const navigationItems = [
+    { id: 'inbox' as NavigationItem, label: 'Inbox', icon: InboxIcon },
+    // { id: 'today' as NavigationItem, label: 'Today', icon: SunIcon },
+    // { id: 'upcoming' as NavigationItem, label: 'Upcoming', icon: CalendarIcon },
+    // { id: 'anytime' as NavigationItem, label: 'Anytime', icon: ListIcon },
+    // { id: 'completed' as NavigationItem, label: 'Completed', icon: CheckIcon },
+  ];
+
+    return (
+        <div className="relative flex size-full min-h-screen flex-col bg-gray-50 group/design-root overflow-x-hidden" style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}>
+            <div className="layout-container flex h-full grow flex-col">
+                <div className="gap-1 px-6 flex flex-1 justify-center py-5">
+                    {/* Left Sidebar - Navigation */}
+                    <div className="layout-content-container flex flex-col w-80">
+                        <div className="flex h-full min-h-[700px] flex-col justify-between bg-gray-50 p-4">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-3 mb-4">
+                            {google.picture && (
+                                <img
+                                src={google.picture}
+                                alt={`${user.first_name}'s profile`}
+                                className="w-8 h-8 rounded-full"
+                                />
+                            )}
+                            <div>
+                                <h1 className="text-[#111418] text-base font-medium leading-normal">CarpoDoEm</h1>
+                                <p className="text-[#5e7387] text-xs">Welcome, {user.first_name}!</p>
+                            </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                            {navigationItems.map((item) => (
+                                <div
+                                key={item.id}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer ${
+                                    activeNav === item.id ? 'bg-[#eaedf0]' : 'hover:bg-[#eaedf0]'
+                                }`}
+                                onClick={() => setActiveNav(item.id)}
+                                >
+                                <div className="text-[#111418]">
+                                    <item.icon />
+                                </div>
+                                <p className="text-[#111418] text-sm font-medium leading-normal">{item.label}</p>
+                                </div>
+                            ))}
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-4">
+                            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#b8cee4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span className="truncate">New List</span>
+                            </button>
+                            <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#eaedf0] rounded-xl">
+                                <div className="text-[#111418]">
+                                <TrashIcon />
+                                </div>
+                                <p className="text-[#111418] text-sm font-medium leading-normal">Trash</p>
+                            </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                    {/* Center - Task List */}
+                    <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+                        <div className="flex justify-between gap-2 px-4 py-3">
+                        <div className="flex gap-2">
+                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
+                            <RecycleIcon />
+                            </button>
+                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
+                            <ArrowRightIcon />
+                            </button>
+                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
+                            <PlusIcon />
+                            </button>
+                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
+                            <SignOutIcon />
+                            </button>
+                        </div>
+                        </div>
+                        <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
+                        {activeNav.charAt(0).toUpperCase() + activeNav.slice(1)}
+                        </h2>
+                        
+                        {tasks.map((task) => (
+                        <div
+                            key={task.id}
+                            className={`flex items-center gap-4 bg-gray-50 px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-[#eaedf0] ${
+                            selectedTask?.id === task.id ? 'bg-[#eaedf0]' : ''
+                            }`}
+                            onClick={() => {
+                            setSelectedTask(task);
+                            setTaskName(task.title);
+                            }}
+                        >
+                            <div className="flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                checked={task.completed}
+                                onChange={(e) => {
+                                e.stopPropagation();
+                                toggleTaskCompletion(task.id);
+                                }}
+                                className="w-5 h-5 rounded border-[#d5dbe2] text-[#b8cee4] focus:ring-[#b8cee4]"
+                            />
+                            <div className="flex flex-col justify-center">
+                                <p className={`text-[#111418] text-base font-medium leading-normal line-clamp-1 ${
+                                task.completed ? 'line-through opacity-60' : ''
+                                }`}>
+                                {task.title}
+                                </p>
+                                <p className="text-[#5e7387] text-sm font-normal leading-normal line-clamp-2">
+                                {task.description}
+                                </p>
+                            </div>
+                            </div>
+                            <div className="shrink-0">
+                            <div className="text-[#111418] flex size-7 items-center justify-center">
+                                <PencilIcon />
+                            </div>
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+
+                    {/* Right Sidebar - Task Preview */}
+                    <div className="layout-content-container flex flex-col w-80">
+                        <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Task Preview</h2>
+                        
+                        {selectedTask && (
+                        <>
+                            <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                            <label className="flex flex-col min-w-40 flex-1">
+                                <p className="text-[#111418] text-base font-medium leading-normal pb-2">Task name</p>
+                                <input
+                                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111418] focus:outline-0 focus:ring-0 border border-[#d5dbe2] bg-gray-50 focus:border-[#d5dbe2] h-14 placeholder:text-[#5e7387] p-[15px] text-base font-normal leading-normal"
+                                value={taskName}
+                                onChange={(e) => setTaskName(e.target.value)}
+                                onBlur={() => updateTaskName(taskName)}
+                                />
+                            </label>
+                            </div>
+
+                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
+                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Complete</p>
+                            <div className="shrink-0">
+                                <label className={`relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none p-0.5 ${
+                                selectedTask.completed ? 'justify-end bg-[#b8cee4]' : 'bg-[#eaedf0]'
+                                }`}>
+                                <div className="h-full w-[27px] rounded-full bg-white toggle-switch"></div>
+                                <input
+                                    type="checkbox"
+                                    className="invisible absolute"
+                                    checked={selectedTask.completed}
+                                    onChange={() => toggleTaskCompletion(selectedTask.id)}
+                                />
+                                </label>
+                            </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
+                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Reminders</p>
+                            <div className="shrink-0">
+                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
+                                <span className="truncate">Set</span>
+                                </button>
+                            </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
+                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Due Date</p>
+                            <div className="shrink-0">
+                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
+                                <span className="truncate">Set</span>
+                                </button>
+                            </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
+                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Repeat</p>
+                            <div className="shrink-0">
+                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
+                                <span className="truncate">Never</span>
+                                </button>
+                            </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
+                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">List</p>
+                            <div className="shrink-0">
+                                <p className="text-[#111418] text-base font-normal leading-normal">{selectedTask.list}</p>
+                            </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
+                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Notes</p>
+                            <div className="shrink-0">
+                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
+                                <span className="truncate">Add</span>
+                                </button>
+                            </div>
+                            </div>
+                        </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+  );
+}
+
+// Icon Components
+const InboxIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,176H48V168H76.69L96,187.32A15.89,15.89,0,0,0,107.31,192h41.38A15.86,15.86,0,0,0,160,187.31L179.31,168H208v40Z"></path>
+  </svg>
+);
+
+const SunIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path>
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88v64a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm59.16,30.45L152,176h16a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136,23.76,23.76,0,0,1,171.16,150.45Z"></path>
+  </svg>
+);
+
+const ListIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M80,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H88A8,8,0,0,1,80,64Zm136,56H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM44,52A12,12,0,1,0,56,64,12,12,0,0,0,44,52Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,116Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,180Z"></path>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"></path>
+  </svg>
+);
+
+const PencilIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"></path>
+  </svg>
+);
+
+const RecycleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M96,208a8,8,0,0,1-8,8H40a24,24,0,0,1-20.77-36l34.29-59.25L39.47,124.5A8,8,0,1,1,35.33,109l32.77-8.77a8,8,0,0,1,9.8,5.66l8.79,32.77A8,8,0,0,1,81,148.5a8.37,8.37,0,0,1-2.08.27,8,8,0,0,1-7.72-5.93l-3.8-14.15L33.11,188A8,8,0,0,0,40,200H88A8,8,0,0,1,96,208Zm140.73-28-23.14-40a8,8,0,0,0-13.84,8l23.14,40A8,8,0,0,1,216,200H147.31l10.34-10.34a8,8,0,0,0-11.31-11.32l-24,24a8,8,0,0,0,0,11.32l24,24a8,8,0,0,0,11.31-11.32L147.31,216H216a24,24,0,0,0,20.77-36ZM128,32a7.85,7.85,0,0,1,6.92,4l34.29,59.25-14.08-3.78A8,8,0,0,0,151,106.92l32.78,8.79a8.23,8.23,0,0,0,2.07.27,8,8,0,0,0,7.72-5.93l8.79-32.79a8,8,0,1,0-15.45-4.14l-3.8,14.17L148.77,28a24,24,0,0,0-41.54,0L84.07,68a8,8,0,0,0,13.85,8l23.16-40A7.85,7.85,0,0,1,128,32Z"></path>
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path>
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+  </svg>
+);
+
+const SignOutIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M112,216a8,8,0,0,1-8,8H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h56a8,8,0,0,1,0,16H48V208h56A8,8,0,0,1,112,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L196.69,120H104a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,221.66,122.34Z"></path>
+  </svg>
+);
