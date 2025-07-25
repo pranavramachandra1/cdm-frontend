@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ListResponse } from '@/lib/lists';
+import { TaskCreate } from '@/lib/tasks';
 
 interface GoogleUserInfo {
   id: string;
@@ -26,8 +27,8 @@ interface List {
     user_id?: string;
     list_name?: string;
     created_at?: Date;
-    last_updated_at: Date;
-    version: string;
+    last_updated_at?: Date;
+    version?: string;
 }
 
 interface SessionData {
@@ -40,14 +41,13 @@ interface Task {
   task_id: string;
   user_id: string;
   task_name: string;
-  reminders: Date[];
-  isComplete: Boolean;
-  isPriority: Boolean;
-  isRecurring: Boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  list_version: string;
-
+  reminders: string[];
+  isComplete: boolean;
+  isPriority: boolean;
+  isRecurring: boolean;
+  createdAt: string;
+  updatedAt: string;
+  list_id: number;
 }
 
 type NavigationItem = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'completed' | 'trash';
@@ -73,7 +73,15 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [showCreateListForm, setShowCreateListForm] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [isCreatingList, setIsCreatingList] = useState(false);
-  const [currentList, setCurrentList] = useState<List | null>(null)
+  const [currentList, setCurrentList] = useState<ListResponse | null>(null);
+
+  // Task creation form state
+  const [showCreateTaskForm, setShowCreateTaskForm] = useState(false);
+  const [newTaskName, setNewTaskName] = useState('');
+  const [newTaskReminders, setNewTaskReminders] = useState<string[]>([]);
+  const [newTaskIsPriority, setNewTaskIsPriority] = useState(false);
+  const [newTaskIsRecurring, setNewTaskIsRecurring] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
   const [activeNav, setActiveNav] = useState<NavigationItem>('inbox');
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0]);
@@ -104,39 +112,43 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
       }
     };
 
+    fetchUserLists();
+  }, [user.user_id, user.google_id]);
+
+  // Separate useEffect to handle currentList changes and fetch tasks
+  useEffect(() => {
+    if (lists.length > 0 && !currentList) {
+      setCurrentList(lists[0]);
+    }
+  }, [lists, currentList]);
+
+  useEffect(() => {
     const fetchCurrentTasks = async () => {
       if (!currentList) {
-        return 
-      }
-
-      const userId = currentList.list_id
-      if (!userId) {
-        console.log('❌ No user ID found, exiting early. User object:', user);
         return;
       }
-      console.log('✅ Fetching tasks for user:', userId);
+
+      const listId = currentList.list_id;
+      if (!listId) {
+        console.log('❌ No list ID found');
+        return;
+      }
+      console.log('✅ Fetching tasks for list:', listId);
       try {
-        const response = await fetch(`/api/tasks/list/${userId}/current`);
+        const response = await fetch(`/api/tasks/list/${listId}/current`);
         if (response.ok) {
           const currentTasks = await response.json();
           setTasks(currentTasks);
         } else {
-          console.error('Failed to fetch user lists');
+          console.error('Failed to fetch tasks');
         }
       } catch (error) {
-        console.error('Error fetching user lists:', error);
+        console.error('Error fetching tasks:', error);
       }
     };
 
-    fetchUserLists();
-
-    // Now, if there is a list selected, select the first list:
-    if (lists.length > 0) {
-        setCurrentList(lists[0])
-    }
-
-    fetchCurrentTasks()
-  }, [user.user_id, user.google_id]);
+    fetchCurrentTasks();
+  }, [currentList]);
 
   // Handle list creation
   const handleCreateList = async () => {
@@ -182,18 +194,104 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     }
   };
 
+  // Handle task creation
+  const handleCreateTask = async () => {
+    console.log('🎯 handleCreateTask called');
+    if (!newTaskName.trim() || !currentList) {
+      console.log('❌ No task name or current list');
+      return;
+    }
+    
+    const userId = user.user_id || user.google_id;
+    if (!userId) {
+      console.log('❌ No user ID available');
+      return;
+    }
+    
+    console.log('✅ Creating task for:', { 
+      newTaskName, 
+      currentList: currentList.list_id,
+      userId,
+      currentListFull: currentList 
+    });
+    setIsCreatingTask(true);
+    
+    try {
+      const taskData: TaskCreate = {
+        user_id: userId,
+        list_id: currentList.list_id,
+        task_name: newTaskName.trim(),
+        reminders: newTaskReminders,
+        isPriority: newTaskIsPriority,
+        isRecurring: newTaskIsRecurring,
+        list_version: currentList.version || 1,
+      };
+      
+      console.log('📤 Sending task data:', taskData);
+      
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      console.log('📨 Response status:', response.status);
+      
+      if (response.ok) {
+        const newTask = await response.json();
+        setTasks(prev => [...prev, newTask]);
+        
+        // Reset form
+        setNewTaskName('');
+        setNewTaskReminders([]);
+        setNewTaskIsPriority(false);
+        setNewTaskIsRecurring(false);
+        setShowCreateTaskForm(false);
+        
+        console.log('✅ Task created:', newTask);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to create task. Status:', response.status);
+        console.error('❌ Error details:', errorData);
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
+
+  // Helper function to add reminder date
+  const addReminderDate = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 1); // Default to 1 hour from now
+    setNewTaskReminders(prev => [...prev, now.toISOString().slice(0, 16)]);
+  };
+
+  // Helper function to remove reminder date
+  const removeReminderDate = (index: number) => {
+    setNewTaskReminders(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Helper function to update reminder date
+  const updateReminderDate = (index: number, newDate: string) => {
+    setNewTaskReminders(prev => prev.map((date, i) => i === index ? newDate : date));
+  };
+
   const toggleTaskCompletion = (taskId: string) => {
     setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
+      task.task_id === taskId ? { ...task, isComplete: !task.isComplete } : task
     ));
   };
 
   const updateTaskName = (newName: string) => {
     if (selectedTask) {
       setTasks(tasks.map(task => 
-        task.id === selectedTask.id ? { ...task, title: newName } : task
+        task.task_id === selectedTask.task_id ? { ...task, task_name: newName } : task
       ));
-      setSelectedTask({ ...selectedTask, title: newName });
+      setSelectedTask({ ...selectedTask, task_name: newName });
     }
   };
 
@@ -326,33 +424,32 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                         
                         {tasks.map((task) => (
                         <div
-                            key={task.id}
+                            key={task.task_id}
                             className={`flex items-center gap-4 bg-gray-50 px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-[#eaedf0] ${
-                            selectedTask?.id === task.id ? 'bg-[#eaedf0]' : ''
+                            selectedTask?.task_id === task.task_id ? 'bg-[#eaedf0]' : ''
                             }`}
                             onClick={() => {
                             setSelectedTask(task);
-                            setTaskName(task.title);
                             }}
                         >
                             <div className="flex items-center gap-3">
                             <input
                                 type="checkbox"
-                                checked={task.completed}
+                                checked={task.isComplete}
                                 onChange={(e) => {
                                 e.stopPropagation();
-                                toggleTaskCompletion(task.id);
+                                toggleTaskCompletion(task.task_id);
                                 }}
                                 className="w-5 h-5 rounded border-[#d5dbe2] text-[#b8cee4] focus:ring-[#b8cee4]"
                             />
                             <div className="flex flex-col justify-center">
                                 <p className={`text-[#111418] text-base font-medium leading-normal line-clamp-1 ${
-                                task.completed ? 'line-through opacity-60' : ''
+                                task.isComplete ? 'line-through opacity-60' : ''
                                 }`}>
-                                {task.title}
+                                {task.task_name}
                                 </p>
                                 <p className="text-[#5e7387] text-sm font-normal leading-normal line-clamp-2">
-                                {task.description}
+                                {task.isPriority ? '⭐ Priority Task' : 'Regular Task'}
                                 </p>
                             </div>
                             </div>
@@ -365,84 +462,134 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                         ))}
                     </div>
 
-                    {/* Right Sidebar - Task Preview */}
+                    {/* Right Sidebar - Task Creation Form */}
                     <div className="layout-content-container flex flex-col w-80">
-                        <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Task Preview</h2>
+                        <div className="flex items-center justify-between px-4 pb-3 pt-5">
+                            <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em]">
+                                {showCreateTaskForm ? 'Create New Task' : 'Task Actions'}
+                            </h2>
+                            {!showCreateTaskForm && currentList && (
+                                <button
+                                    onClick={() => setShowCreateTaskForm(true)}
+                                    className="text-sm bg-[#b8cee4] hover:bg-[#a5c1db] text-[#111418] px-3 py-1 rounded-lg font-medium transition-colors"
+                                >
+                                    + Add Task
+                                </button>
+                            )}
+                        </div>
                         
-                        {selectedTask && (
-                        <>
-                            <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                            <label className="flex flex-col min-w-40 flex-1">
-                                <p className="text-[#111418] text-base font-medium leading-normal pb-2">Task name</p>
-                                <input
-                                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111418] focus:outline-0 focus:ring-0 border border-[#d5dbe2] bg-gray-50 focus:border-[#d5dbe2] h-14 placeholder:text-[#5e7387] p-[15px] text-base font-normal leading-normal"
-                                value={taskName}
-                                onChange={(e) => setTaskName(e.target.value)}
-                                onBlur={() => updateTaskName(taskName)}
-                                />
-                            </label>
-                            </div>
+                        {/* Task Creation Form */}
+                        {showCreateTaskForm && currentList ? (
+                            <div className="flex flex-col gap-4 px-4 pb-4">
+                                {/* Task Name Field */}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[#111418] text-base font-medium">Task Name</label>
+                                    <input
+                                        type="text"
+                                        value={newTaskName}
+                                        onChange={(e) => setNewTaskName(e.target.value)}
+                                        placeholder="Enter task name..."
+                                        className="w-full px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                        autoFocus
+                                    />
+                                </div>
 
-                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
-                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Complete</p>
-                            <div className="shrink-0">
-                                <label className={`relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none p-0.5 ${
-                                selectedTask.completed ? 'justify-end bg-[#b8cee4]' : 'bg-[#eaedf0]'
-                                }`}>
-                                <div className="h-full w-[27px] rounded-full bg-white toggle-switch"></div>
-                                <input
-                                    type="checkbox"
-                                    className="invisible absolute"
-                                    checked={selectedTask.completed}
-                                    onChange={() => toggleTaskCompletion(selectedTask.id)}
-                                />
-                                </label>
-                            </div>
-                            </div>
+                                {/* Reminders Section */}
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[#111418] text-base font-medium">Reminders</label>
+                                        <button
+                                            type="button"
+                                            onClick={addReminderDate}
+                                            className="text-sm text-[#b8cee4] hover:text-[#a5c1db] font-medium"
+                                        >
+                                            + Add Reminder
+                                        </button>
+                                    </div>
+                                    
+                                    {newTaskReminders.map((reminder, index) => (
+                                        <div key={index} className="flex gap-2 items-center">
+                                            <input
+                                                type="datetime-local"
+                                                value={reminder}
+                                                onChange={(e) => updateReminderDate(index, e.target.value)}
+                                                min={new Date().toISOString().slice(0, 16)}
+                                                className="flex-1 px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeReminderDate(index)}
+                                                className="text-red-500 hover:text-red-700 text-sm px-2"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
+                                    
+                                    {newTaskReminders.length === 0 && (
+                                        <p className="text-[#5e7387] text-sm italic">No reminders set</p>
+                                    )}
+                                </div>
 
-                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
-                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Reminders</p>
-                            <div className="shrink-0">
-                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
-                                <span className="truncate">Set</span>
-                                </button>
-                            </div>
-                            </div>
+                                {/* Priority Checkbox */}
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="isPriority"
+                                        checked={newTaskIsPriority}
+                                        onChange={(e) => setNewTaskIsPriority(e.target.checked)}
+                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                    />
+                                    <label htmlFor="isPriority" className="text-[#111418] text-base font-medium cursor-pointer">
+                                        High Priority
+                                    </label>
+                                </div>
 
-                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
-                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Due Date</p>
-                            <div className="shrink-0">
-                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
-                                <span className="truncate">Set</span>
-                                </button>
-                            </div>
-                            </div>
+                                {/* Recurring Checkbox */}
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="isRecurring"
+                                        checked={newTaskIsRecurring}
+                                        onChange={(e) => setNewTaskIsRecurring(e.target.checked)}
+                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                    />
+                                    <label htmlFor="isRecurring" className="text-[#111418] text-base font-medium cursor-pointer">
+                                        Recurring Task
+                                    </label>
+                                </div>
 
-                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
-                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Repeat</p>
-                            <div className="shrink-0">
-                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
-                                <span className="truncate">Never</span>
-                                </button>
+                                {/* Form Actions */}
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        onClick={handleCreateTask}
+                                        disabled={!newTaskName.trim() || isCreatingTask}
+                                        className="flex-1 px-4 py-2 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {isCreatingTask ? 'Creating...' : 'Create Task'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowCreateTaskForm(false);
+                                            setNewTaskName('');
+                                            setNewTaskReminders([]);
+                                            setNewTaskIsPriority(false);
+                                            setNewTaskIsRecurring(false);
+                                        }}
+                                        className="px-4 py-2 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
+                        ) : !currentList ? (
+                            <div className="px-4 py-8 text-center">
+                                <p className="text-[#5e7387] text-sm">Select a list to create tasks</p>
                             </div>
-
-                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
-                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">List</p>
-                            <div className="shrink-0">
-                                <p className="text-[#111418] text-base font-normal leading-normal">{selectedTask.list}</p>
+                        ) : (
+                            <div className="px-4 py-8 text-center">
+                                <p className="text-[#5e7387] text-sm">Click &quot;+ Add Task&quot; to create a new task</p>
                             </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 bg-gray-50 px-4 min-h-14 justify-between">
-                            <p className="text-[#111418] text-base font-normal leading-normal flex-1 truncate">Notes</p>
-                            <div className="shrink-0">
-                                <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#eaedf0] text-[#111418] text-sm font-medium leading-normal w-fit">
-                                <span className="truncate">Add</span>
-                                </button>
-                            </div>
-                            </div>
-                        </>
                         )}
                     </div>
                 </div>

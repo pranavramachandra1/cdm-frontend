@@ -3,10 +3,10 @@ import { getCurrentListTasks } from '@/lib/tasks';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { listId: string } }
+  { params }: { params: { list_id: string } }
 ) {
   try {
-    const result = await getCurrentListTasks(params.listId);
+    const result = await getCurrentListTasks(params.list_id);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
