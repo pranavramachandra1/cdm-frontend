@@ -21,6 +21,15 @@ interface User {
   google_id: string;
 }
 
+interface List {
+    list_id?: string;
+    user_id?: string;
+    list_name?: string;
+    created_at?: Date;
+    last_updated_at: Date;
+    version: string;
+}
+
 interface SessionData {
   google: GoogleUserInfo;
   user: User;
@@ -28,11 +37,17 @@ interface SessionData {
 }
 
 interface Task {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  list: string;
+  task_id: string;
+  user_id: string;
+  task_name: string;
+  reminders: Date[];
+  isComplete: Boolean;
+  isPriority: Boolean;
+  isRecurring: Boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  list_version: string;
+
 }
 
 type NavigationItem = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'completed' | 'trash';
@@ -58,6 +73,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [showCreateListForm, setShowCreateListForm] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [isCreatingList, setIsCreatingList] = useState(false);
+  const [currentList, setCurrentList] = useState<List | null>(null)
 
   const [activeNav, setActiveNav] = useState<NavigationItem>('inbox');
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0]);
@@ -69,7 +85,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     console.log('🎯 user.user_id specifically:', user.user_id, typeof user.user_id);
     
     const fetchUserLists = async () => {
-      const userId = user.user_id || user.google_id;
+      const userId = user.user_id
       if (!userId) {
         console.log('❌ No user ID found, exiting early. User object:', user);
         return;
@@ -88,7 +104,38 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
       }
     };
 
+    const fetchCurrentTasks = async () => {
+      if (!currentList) {
+        return 
+      }
+
+      const userId = currentList.list_id
+      if (!userId) {
+        console.log('❌ No user ID found, exiting early. User object:', user);
+        return;
+      }
+      console.log('✅ Fetching tasks for user:', userId);
+      try {
+        const response = await fetch(`/api/tasks/list/${userId}/current`);
+        if (response.ok) {
+          const currentTasks = await response.json();
+          setTasks(currentTasks);
+        } else {
+          console.error('Failed to fetch user lists');
+        }
+      } catch (error) {
+        console.error('Error fetching user lists:', error);
+      }
+    };
+
     fetchUserLists();
+
+    // Now, if there is a list selected, select the first list:
+    if (lists.length > 0) {
+        setCurrentList(lists[0])
+    }
+
+    fetchCurrentTasks()
   }, [user.user_id, user.google_id]);
 
   // Handle list creation
@@ -167,7 +214,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 />
                             )}
                             <div>
-                                <h1 className="text-[#111418] text-base font-medium leading-normal">CarpoDoEm</h1>
+                                <h1 className="text-[#111418] text-base font-medium leading-normal">CarpeDoEm</h1>
                                 <p className="text-[#5e7387] text-xs">Welcome, {user.first_name}!</p>
                             </div>
                             </div>
@@ -183,6 +230,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         onClick={() => {
                                         // TODO: Set active list and load list tasks
                                         console.log('Selected list:', list.list_name);
+                                        setCurrentList(list);
                                         }}
                                     >
                                         <div className="text-[#111418]">
