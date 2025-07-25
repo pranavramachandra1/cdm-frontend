@@ -47,19 +47,9 @@ async function getSessionData(): Promise<SessionData | null> {
 
 // Server Component - handles auth and data fetching
 export default async function Dashboard() {
+  console.log('🚀 SERVER: Dashboard rendering');
   // Get session data from cookie
   const userSessionData = await getSessionData();
-
-  if (userSessionData && userSessionData.user && userSessionData.user.user_id) {
-    console.log("awaiting lists")
-    let url = `http://localhost:3001/api/lists/user/${userSessionData.user.user_id}`
-    console.log(`${url}`)
-    let bruh = await fetch(url)
-    // console.log(bruh.json())
-    // let listData = await fetch()
-    // console.log(listData.json())
-  }
-  
   
   // Redirect to login if no session
   if (!userSessionData) {

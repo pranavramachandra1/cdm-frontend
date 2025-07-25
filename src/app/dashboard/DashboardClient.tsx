@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ListResponse } from '@/lib/lists';
 
 interface GoogleUserInfo {
   id: string;
@@ -12,7 +13,7 @@ interface GoogleUserInfo {
 }
 
 interface User {
-  id?: string;
+  user_id?: string;
   username: string;
   email: string;
   first_name: string;
@@ -36,29 +37,103 @@ interface Task {
 
 type NavigationItem = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'completed' | 'trash';
 
-const BASE_URL = process.env.BASE_URL
+// const BASE_URL = process.env.BASE_URL
 
 interface DashboardClientProps {
   userSessionData: SessionData;
-
 }
 
 export default function DashboardClient({ userSessionData }: DashboardClientProps) {
-    
-  
+  console.log('🚀 CLIENT: DashboardClient rendering');
   const { user, google, isNewUser } = userSessionData;
+  
+  console.log('🚀 DashboardClient rendering with user:', user);
 
   const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', title: 'Buy groceries', description: 'Grocery shopping', completed: false, list: 'Inbox' },
-    { id: '2', title: 'Schedule meeting', description: 'Meeting with Alex', completed: false, list: 'Inbox' },
-    { id: '3', title: 'Draft proposal', description: 'Project proposal', completed: false, list: 'Inbox' },
-    { id: '4', title: 'Go to the gym', description: 'Gym workout', completed: false, list: 'Inbox' },
-    { id: '5', title: 'Attend book club', description: 'Book club', completed: false, list: 'Inbox' },
+
   ]);
+
+  // List state management
+  const [lists, setLists] = useState<ListResponse[]>([]);
+  const [showCreateListForm, setShowCreateListForm] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [isCreatingList, setIsCreatingList] = useState(false);
 
   const [activeNav, setActiveNav] = useState<NavigationItem>('inbox');
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0]);
   const [taskName, setTaskName] = useState('');
+
+  // Fetch user's lists on component mount
+  useEffect(() => {
+    console.log('🎯 useEffect triggered with user:', user);
+    console.log('🎯 user.user_id specifically:', user.user_id, typeof user.user_id);
+    
+    const fetchUserLists = async () => {
+      const userId = user.user_id || user.google_id;
+      if (!userId) {
+        console.log('❌ No user ID found, exiting early. User object:', user);
+        return;
+      }
+      console.log('✅ Fetching lists for user:', userId);
+      try {
+        const response = await fetch(`/api/lists/user/${userId}`);
+        if (response.ok) {
+          const userLists = await response.json();
+          setLists(userLists);
+        } else {
+          console.error('Failed to fetch user lists');
+        }
+      } catch (error) {
+        console.error('Error fetching user lists:', error);
+      }
+    };
+
+    fetchUserLists();
+  }, [user.user_id, user.google_id]);
+
+  // Handle list creation
+  const handleCreateList = async () => {
+    console.log('🎯 handleCreateList called with:', { newListName, user });
+    if (!newListName.trim()) {
+      console.log('❌ No list name provided');
+      return;
+    }
+    
+    // Use google_id as fallback if user.user_id is not available
+    const userId = user.user_id || user.google_id;
+    if (!userId) {
+      console.log('❌ No user ID available (neither user.id nor google_id)');
+      return;
+    }
+    
+    console.log('✅ Creating list with userId:', userId);
+    setIsCreatingList(true);
+    try {
+      const response = await fetch('/api/lists', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          list_name: newListName.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const newList = await response.json();
+        setLists(prev => [...prev, newList]);
+        setNewListName('');
+        setShowCreateListForm(false);
+      } else {
+        console.error('Failed to create list');
+      }
+    } catch (error) {
+      console.error('Error creating list:', error);
+    } finally {
+      setIsCreatingList(false);
+    }
+  };
 
   const toggleTaskCompletion = (taskId: string) => {
     setTasks(tasks.map(task => 
@@ -74,14 +149,6 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
       setSelectedTask({ ...selectedTask, title: newName });
     }
   };
-
-  const navigationItems = [
-    { id: 'inbox' as NavigationItem, label: 'Inbox', icon: InboxIcon },
-    // { id: 'today' as NavigationItem, label: 'Today', icon: SunIcon },
-    // { id: 'upcoming' as NavigationItem, label: 'Upcoming', icon: CalendarIcon },
-    // { id: 'anytime' as NavigationItem, label: 'Anytime', icon: ListIcon },
-    // { id: 'completed' as NavigationItem, label: 'Completed', icon: CheckIcon },
-  ];
 
     return (
         <div className="relative flex size-full min-h-screen flex-col bg-gray-50 group/design-root overflow-x-hidden" style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}>
@@ -105,26 +172,76 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </div>
                             </div>
                             <div className="flex flex-col gap-2">
-                            {navigationItems.map((item) => (
-                                <div
-                                key={item.id}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer ${
-                                    activeNav === item.id ? 'bg-[#eaedf0]' : 'hover:bg-[#eaedf0]'
-                                }`}
-                                onClick={() => setActiveNav(item.id)}
-                                >
-                                <div className="text-[#111418]">
-                                    <item.icon />
+                            {/* User's Lists Section */}
+                            {lists.length > 0 && (
+                                <div className="flex flex-col gap-1">
+                                    <p className="text-[#5e7387] text-xs font-medium px-3 mb-1">My Lists</p>
+                                    {lists.map((list) => (
+                                    <div
+                                        key={list.list_id}
+                                        className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-[#eaedf0]"
+                                        onClick={() => {
+                                        // TODO: Set active list and load list tasks
+                                        console.log('Selected list:', list.list_name);
+                                        }}
+                                    >
+                                        <div className="text-[#111418]">
+                                        <ListIcon />
+                                        </div>
+                                        <p className="text-[#111418] text-sm font-medium leading-normal">{list.list_name}</p>
+                                    </div>
+                                    ))}
                                 </div>
-                                <p className="text-[#111418] text-sm font-medium leading-normal">{item.label}</p>
-                                </div>
-                            ))}
+                            )}
                             </div>
                         </div>
                         <div className="flex flex-col gap-4">
-                            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#b8cee4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em]">
-                            <span className="truncate">New List</span>
-                            </button>
+                            {/* New List Button / Form */}
+                            {!showCreateListForm ? (
+                                <button 
+                                onClick={() => setShowCreateListForm(true)}
+                                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#b8cee4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#a5c1db] transition-colors"
+                                >
+                                <span className="truncate">New List</span>
+                                </button>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                <input
+                                    type="text"
+                                    value={newListName}
+                                    onChange={(e) => setNewListName(e.target.value)}
+                                    placeholder="Enter list name..."
+                                    className="w-full px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleCreateList();
+                                    } else if (e.key === 'Escape') {
+                                        setShowCreateListForm(false);
+                                        setNewListName('');
+                                    }
+                                    }}
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                    onClick={handleCreateList}
+                                    disabled={!newListName.trim() || isCreatingList}
+                                    className="flex-1 px-3 py-2 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                    {isCreatingList ? 'Creating...' : 'Create'}
+                                    </button>
+                                    <button
+                                    onClick={() => {
+                                        setShowCreateListForm(false);
+                                        setNewListName('');
+                                    }}
+                                    className="px-3 py-2 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors"
+                                    >
+                                    Cancel
+                                    </button>
+                                </div>
+                                </div>
+                            )}
                             <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#eaedf0] rounded-xl">
                                 <div className="text-[#111418]">
