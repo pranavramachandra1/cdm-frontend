@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ListResponse } from '@/lib/lists';
-import { TaskCreate } from '@/lib/tasks';
+import { TaskCreate, TaskUpdate, deleteTask } from '@/lib/tasks';
 
 interface GoogleUserInfo {
   id: string;
@@ -47,7 +47,7 @@ interface Task {
   isRecurring: boolean;
   createdAt: string;
   updatedAt: string;
-  list_id: number;
+  list_id: string;
 }
 
 type NavigationItem = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'completed' | 'trash';
@@ -57,6 +57,7 @@ type NavigationItem = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'completed' |
 interface DashboardClientProps {
   userSessionData: SessionData;
 }
+
 
 export default function DashboardClient({ userSessionData }: DashboardClientProps) {
   console.log('🚀 CLIENT: DashboardClient rendering');
@@ -83,9 +84,17 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [newTaskIsRecurring, setNewTaskIsRecurring] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
 
-  const [activeNav, setActiveNav] = useState<NavigationItem>('inbox');
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0]);
   const [taskName, setTaskName] = useState('');
+  
+  // Task editing form state:
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [showEditTaskForm, setShowEditTaskForm] = useState(false);
+  const [currentEditTask, setCurrentEditTask] = useState<Task | null>(null);
+  const [editTaskName, setEditTaskName] = useState('');
+  const [editTaskReminders, setEditTaskReminders] = useState<string[]>([]);
+  const [editTaskIsPriority, setEditTaskIsPriority] = useState(false);
+  const [editTaskIsRecurring, setEditTaskIsRecurring] = useState(false);
 
   // Fetch user's lists on component mount
   useEffect(() => {
@@ -129,18 +138,28 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
       }
 
       const listId = currentList.list_id;
+      console.log(`‼️ list_id is "${listId}" (type: ${typeof listId})`);
+      console.log('‼️ currentList full object:', currentList);
+      
       if (!listId) {
         console.log('❌ No list ID found');
         return;
       }
       console.log('✅ Fetching tasks for list:', listId);
       try {
-        const response = await fetch(`/api/tasks/list/${listId}/current`);
+        const url = `/api/tasks/list/${listId}/current`;
+        console.log(`📍 Fetching URL: ${url}`);
+        const response = await fetch(url);
+        console.log(`📨 Response status: ${response.status}`);
+        
         if (response.ok) {
           const currentTasks = await response.json();
+          console.log(`✅ Successfully loaded ${currentTasks.length} tasks`);
           setTasks(currentTasks);
         } else {
-          console.error('Failed to fetch tasks');
+          const errorData = await response.json();
+          console.error(`❌ Failed to fetch tasks. Status: ${response.status}`);
+          console.error('❌ Error details:', errorData);
         }
       } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -263,27 +282,211 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     }
   };
 
-  // Helper function to add reminder date
+  const handleEditTask = async () => {
+    console.log('🎯 handleEditTask called');
+
+    if (!currentEditTask || !editTaskName.trim()) {
+      console.log('❌ No task to edit or empty task name');
+      return;
+    }
+
+    const taskId = currentEditTask.task_id;
+    console.log('✅ Editing task:', { 
+      taskId,
+      taskName: editTaskName,
+      reminders: editTaskReminders,
+      isPriority: editTaskIsPriority,
+      isRecurring: editTaskIsRecurring
+    });
+
+    setIsEditingTask(true);
+    
+    try {
+      const taskEditData: TaskUpdate = {
+        task_name: editTaskName.trim(),
+        reminders: editTaskReminders,
+        isPriority: editTaskIsPriority,
+        isRecurring: editTaskIsRecurring,
+      };
+
+      console.log('📤 Updating task data:', taskEditData);
+
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskEditData)
+      });
+
+      console.log('📨 Response status:', response.status);
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(prev => prev.map(task => 
+          task.task_id === updatedTask.task_id ? updatedTask : task
+        ));
+
+        // Reset form
+        setEditTaskName('');
+        setEditTaskReminders([]);
+        setEditTaskIsPriority(false);
+        setEditTaskIsRecurring(false);
+        setShowEditTaskForm(false);
+        setCurrentEditTask(null);
+        
+        console.log('✅ Task edited:', updatedTask);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to edit task. Status:', response.status);
+        console.error('❌ Error details:', errorData);
+      }
+    } catch (error) {
+      console.error('Error editing task:', error);
+    } finally {
+      setIsEditingTask(false);
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!currentEditTask) {
+      console.log('❌ No task to delete');
+      return;
+    }
+
+    const taskId = currentEditTask.task_id;
+    console.log('🗑️ Deleting task:', taskId);
+
+    if (!confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setTasks(prev => prev.filter(task => task.task_id !== taskId));
+        
+        // Reset form
+        setEditTaskName('');
+        setEditTaskReminders([]);
+        setEditTaskIsPriority(false);
+        setEditTaskIsRecurring(false);
+        setShowEditTaskForm(false);
+        setCurrentEditTask(null);
+        
+        console.log('✅ Task deleted successfully');
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to delete task. Status:', response.status);
+        console.error('❌ Error details:', errorData);
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  // Helper function to add reminder date (for creating)
   const addReminderDate = () => {
     const now = new Date();
     now.setHours(now.getHours() + 1); // Default to 1 hour from now
     setNewTaskReminders(prev => [...prev, now.toISOString().slice(0, 16)]);
   };
 
-  // Helper function to remove reminder date
+  // Helper function to remove reminder date (for creating)
   const removeReminderDate = (index: number) => {
     setNewTaskReminders(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Helper function to update reminder date
+  // Helper function to update reminder date (for creating)
   const updateReminderDate = (index: number, newDate: string) => {
     setNewTaskReminders(prev => prev.map((date, i) => i === index ? newDate : date));
   };
 
-  const toggleTaskCompletion = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.task_id === taskId ? { ...task, isComplete: !task.isComplete } : task
-    ));
+  // Helper functions for editing reminders
+  const addEditReminderDate = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    setEditTaskReminders(prev => [...prev, now.toISOString().slice(0, 16)]);
+  };
+
+  const removeEditReminderDate = (index: number) => {
+    setEditTaskReminders(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateEditReminderDate = (index: number, newDate: string) => {
+    setEditTaskReminders(prev => prev.map((date, i) => i === index ? newDate : date));
+  };
+
+  // Function to start editing a task
+  const startEditingTask = (task: Task) => {
+    setCurrentEditTask(task);
+    setEditTaskName(task.task_name);
+    setEditTaskReminders([...task.reminders]);
+    setEditTaskIsPriority(task.isPriority);
+    setEditTaskIsRecurring(task.isRecurring);
+    setShowEditTaskForm(true);
+    setShowCreateTaskForm(false); // Hide create form
+  };
+
+  const toggleTaskCompletion = async (taskId: string) => {
+    try {
+      console.log('🔄 Toggling task completion for:', taskId);
+      
+      // Find the current task to get its current state
+      const currentTask = tasks.find(task => task.task_id === taskId);
+      if (!currentTask) {
+        console.error('❌ Task not found:', taskId);
+        return;
+      }
+      
+      // Optimistically update UI
+      setTasks(prev => prev.map(task => 
+        task.task_id === taskId ? { ...task, isComplete: !task.isComplete } : task
+      ));
+
+      // Call API to persist the change using PUT request
+      const taskUpdateData: TaskUpdate = {
+        isComplete: !currentTask.isComplete
+      };
+
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskUpdateData)
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        
+        // Update with server response to ensure consistency
+        setTasks(prev => prev.map(task => 
+          task.task_id === updatedTask.task_id ? updatedTask : task
+        ));
+        
+        console.log('✅ Task completion toggled successfully:', updatedTask);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to toggle task completion. Status:', response.status);
+        console.error('❌ Error details:', errorData);
+        
+        // Revert optimistic update on error
+        setTasks(prev => prev.map(task => 
+          task.task_id === taskId ? { ...task, isComplete: !task.isComplete } : task
+        ));
+      }
+    } catch (error) {
+      console.error('❌ Failed to toggle task completion:', error);
+      
+      // Revert optimistic update on error
+      setTasks(prev => prev.map(task => 
+        task.task_id === taskId ? { ...task, isComplete: !task.isComplete } : task
+      ));
+    }
   };
 
   const updateTaskName = (newName: string) => {
@@ -389,12 +592,12 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 </div>
                             )}
                             <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#eaedf0] rounded-xl">
+                            {/* <div className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#eaedf0] rounded-xl">
                                 <div className="text-[#111418]">
                                 <TrashIcon />
                                 </div>
                                 <p className="text-[#111418] text-sm font-medium leading-normal">Trash</p>
-                            </div>
+                            </div> */}
                             </div>
                         </div>
                         </div>
@@ -404,22 +607,20 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                     <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
                         <div className="flex justify-between gap-2 px-4 py-3">
                         <div className="flex gap-2">
-                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
+                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded"
+                                    title="Rollover"
+                            >
                             <RecycleIcon />
                             </button>
-                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
-                            <ArrowRightIcon />
-                            </button>
-                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
-                            <PlusIcon />
-                            </button>
-                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded">
+                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded"
+                                    title = "Clear and Create New"
+                            >
                             <SignOutIcon />
                             </button>
                         </div>
                         </div>
                         <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
-                        {activeNav.charAt(0).toUpperCase() + activeNav.slice(1)}
+                        {currentList?.list_name}
                         </h2>
                         
                         {tasks.map((task) => (
@@ -439,6 +640,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 onChange={(e) => {
                                 e.stopPropagation();
                                 toggleTaskCompletion(task.task_id);
+                                // updat
                                 }}
                                 className="w-5 h-5 rounded border-[#d5dbe2] text-[#b8cee4] focus:ring-[#b8cee4]"
                             />
@@ -455,22 +657,31 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </div>
                             <div className="shrink-0">
                             <div className="text-[#111418] flex size-7 items-center justify-center">
-                                <PencilIcon />
+                                <button
+                                    onClick={() => startEditingTask(task)}
+                                    className="hover:bg-[#eaedf0] p-1 rounded transition-colors"
+                                    >
+                                    <PencilIcon />
+                                </button>
                             </div>
                             </div>
                         </div>
                         ))}
                     </div>
 
-                    {/* Right Sidebar - Task Creation Form */}
+                    {/* Right Sidebar - Task Creation/Edit Form */}
                     <div className="layout-content-container flex flex-col w-80">
                         <div className="flex items-center justify-between px-4 pb-3 pt-5">
                             <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em]">
-                                {showCreateTaskForm ? 'Create New Task' : 'Task Actions'}
+                                {showCreateTaskForm ? 'Create New Task' : 
+                                 showEditTaskForm ? 'Edit Task' : 'Task Actions'}
                             </h2>
-                            {!showCreateTaskForm && currentList && (
+                            {!showCreateTaskForm && !showEditTaskForm && currentList && (
                                 <button
-                                    onClick={() => setShowCreateTaskForm(true)}
+                                    onClick={() => {
+                                      setShowCreateTaskForm(true);
+                                      setShowEditTaskForm(false);
+                                    }}
                                     className="text-sm bg-[#b8cee4] hover:bg-[#a5c1db] text-[#111418] px-3 py-1 rounded-lg font-medium transition-colors"
                                 >
                                     + Add Task
@@ -582,6 +793,116 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                     </button>
                                 </div>
                             </div>
+                        ) : showEditTaskForm && currentEditTask ? (
+                            <div className="flex flex-col gap-4 px-4 pb-4">
+                                {/* Task Name Field */}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[#111418] text-base font-medium">Task Name</label>
+                                    <input
+                                        type="text"
+                                        value={editTaskName}
+                                        onChange={(e) => setEditTaskName(e.target.value)}
+                                        placeholder="Enter task name..."
+                                        className="w-full px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* Reminders Section */}
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[#111418] text-base font-medium">Reminders</label>
+                                        <button
+                                            type="button"
+                                            onClick={addEditReminderDate}
+                                            className="text-sm text-[#b8cee4] hover:text-[#a5c1db] font-medium"
+                                        >
+                                            + Add Reminder
+                                        </button>
+                                    </div>
+                                    
+                                    {editTaskReminders.map((reminder, index) => (
+                                        <div key={index} className="flex gap-2 items-center">
+                                            <input
+                                                type="datetime-local"
+                                                value={reminder}
+                                                onChange={(e) => updateEditReminderDate(index, e.target.value)}
+                                                min={new Date().toISOString().slice(0, 16)}
+                                                className="flex-1 px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeEditReminderDate(index)}
+                                                className="text-red-500 hover:text-red-700 text-sm px-2"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
+                                    
+                                    {editTaskReminders.length === 0 && (
+                                        <p className="text-[#5e7387] text-sm italic">No reminders set</p>
+                                    )}
+                                </div>
+
+                                {/* Priority Checkbox */}
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="editIsPriority"
+                                        checked={editTaskIsPriority}
+                                        onChange={(e) => setEditTaskIsPriority(e.target.checked)}
+                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                    />
+                                    <label htmlFor="editIsPriority" className="text-[#111418] text-base font-medium cursor-pointer">
+                                        High Priority
+                                    </label>
+                                </div>
+
+                                {/* Recurring Checkbox */}
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="editIsRecurring"
+                                        checked={editTaskIsRecurring}
+                                        onChange={(e) => setEditTaskIsRecurring(e.target.checked)}
+                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                    />
+                                    <label htmlFor="editIsRecurring" className="text-[#111418] text-base font-medium cursor-pointer">
+                                        Recurring Task
+                                    </label>
+                                </div>
+
+                                {/* Form Actions */}
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        onClick={handleEditTask}
+                                        disabled={!editTaskName.trim() || isEditingTask}
+                                        className="flex-1 px-4 py-2 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {isEditingTask ? 'Updating...' : 'Update Task'}
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteTask}
+                                        className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-xl hover:bg-red-600 transition-colors"
+                                    >
+                                        Delete
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowEditTaskForm(false);
+                                            setEditTaskName('');
+                                            setEditTaskReminders([]);
+                                            setEditTaskIsPriority(false);
+                                            setEditTaskIsRecurring(false);
+                                            setCurrentEditTask(null);
+                                        }}
+                                        className="px-4 py-2 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
                         ) : !currentList ? (
                             <div className="px-4 py-8 text-center">
                                 <p className="text-[#5e7387] text-sm">Select a list to create tasks</p>
@@ -599,24 +920,6 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
 }
 
 // Icon Components
-const InboxIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-    <path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,176H48V168H76.69L96,187.32A15.89,15.89,0,0,0,107.31,192h41.38A15.86,15.86,0,0,0,160,187.31L179.31,168H208v40Z"></path>
-  </svg>
-);
-
-const SunIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-    <path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path>
-  </svg>
-);
-
-const CalendarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-    <path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88v64a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm59.16,30.45L152,176h16a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136,23.76,23.76,0,0,1,171.16,150.45Z"></path>
-  </svg>
-);
-
 const ListIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
     <path d="M80,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H88A8,8,0,0,1,80,64Zm136,56H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM44,52A12,12,0,1,0,56,64,12,12,0,0,0,44,52Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,116Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,180Z"></path>
@@ -644,6 +947,23 @@ const PencilIcon = () => (
 const RecycleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
     <path d="M96,208a8,8,0,0,1-8,8H40a24,24,0,0,1-20.77-36l34.29-59.25L39.47,124.5A8,8,0,1,1,35.33,109l32.77-8.77a8,8,0,0,1,9.8,5.66l8.79,32.77A8,8,0,0,1,81,148.5a8.37,8.37,0,0,1-2.08.27,8,8,0,0,1-7.72-5.93l-3.8-14.15L33.11,188A8,8,0,0,0,40,200H88A8,8,0,0,1,96,208Zm140.73-28-23.14-40a8,8,0,0,0-13.84,8l23.14,40A8,8,0,0,1,216,200H147.31l10.34-10.34a8,8,0,0,0-11.31-11.32l-24,24a8,8,0,0,0,0,11.32l24,24a8,8,0,0,0,11.31-11.32L147.31,216H216a24,24,0,0,0,20.77-36ZM128,32a7.85,7.85,0,0,1,6.92,4l34.29,59.25-14.08-3.78A8,8,0,0,0,151,106.92l32.78,8.79a8.23,8.23,0,0,0,2.07.27,8,8,0,0,0,7.72-5.93l8.79-32.79a8,8,0,1,0-15.45-4.14l-3.8,14.17L148.77,28a24,24,0,0,0-41.54,0L84.07,68a8,8,0,0,0,13.85,8l23.16-40A7.85,7.85,0,0,1,128,32Z"></path>
+  </svg>
+);
+
+const ResetIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24px"
+    height="24px"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    // strokeLinejoin="round"
+    viewBox="0 0 24 24"
+  >
+    <path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-5.2 9.7" />
+    
   </svg>
 );
 
