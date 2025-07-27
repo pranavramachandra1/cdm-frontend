@@ -3,10 +3,11 @@ import { clearListTasks } from '@/lib/tasks';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { listId: string } }
+  { params }: { params: Promise<{ listId: string }> }
 ) {
   try {
-    const result = await clearListTasks(params.listId);
+    const { listId } = await params;
+    const result = await clearListTasks(listId);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

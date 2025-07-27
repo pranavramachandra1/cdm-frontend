@@ -498,6 +498,108 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     }
   };
 
+  const handleClearList = async () => {
+    if (!currentList) {
+      console.log('❌ No current list to clear');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to clear all tasks from this list? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Clearing list:', currentList.list_id);
+      
+      const response = await fetch(`/api/tasks/clear-list/${currentList.list_id}`, {
+        method: 'PATCH'
+      });
+
+      if (response.ok) {
+        const updatedTasks = await response.json();
+        console.log('✅ List cleared successfully. Remaining tasks:', updatedTasks);
+        
+        // Update tasks with the current tasks in the list (should be empty or contain remaining tasks)
+        setTasks(updatedTasks);
+        
+        // Reset selected task if it's no longer in the updated tasks
+        if (selectedTask && !updatedTasks.find((task: Task) => task.task_id === selectedTask.task_id)) {
+          setSelectedTask(updatedTasks.length > 0 ? updatedTasks[0] : null);
+        }
+        
+        // Close any open forms
+        setShowCreateTaskForm(false);
+        setShowEditTaskForm(false);
+        setCurrentEditTask(null);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to clear list. Status:', response.status);
+        console.error('❌ Error details:', errorData);
+        alert('Failed to clear list. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error clearing list:', error);
+      alert('Failed to clear list. Please try again.');
+    }
+  };
+
+  const handleRolloverList = async () => {
+    if (!currentList) {
+      console.log('❌ No current list to rollover');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to rollover this list? This will move incomplete tasks to a new version and mark completed tasks as done.')) {
+      return;
+    }
+
+    try {
+      console.log('🔄 Rolling over list:', currentList.list_id);
+      
+      const response = await fetch(`/api/tasks/rollover-list/${currentList.list_id}`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        const rolledOverTasks = await response.json();
+        console.log('✅ List rolled over successfully:', rolledOverTasks);
+        
+        // Update tasks to show only the rolled over (incomplete) tasks
+        setTasks(rolledOverTasks);
+        
+        // Update the current list to reflect the new version
+        const updatedListResponse = await fetch(`/api/lists/${currentList.list_id}`);
+        if (updatedListResponse.ok) {
+          const updatedList = await updatedListResponse.json();
+          setCurrentList(updatedList);
+          
+          // Update the lists array to reflect the new version
+          setLists(prev => prev.map(list => 
+            list.list_id === updatedList.list_id ? updatedList : list
+          ));
+        }
+        
+        // Reset selected task if it's no longer in the rolled over tasks
+        if (selectedTask && !rolledOverTasks.find((task: Task) => task.task_id === selectedTask.task_id)) {
+          setSelectedTask(rolledOverTasks.length > 0 ? rolledOverTasks[0] : null);
+        }
+        
+        // Close any open forms
+        setShowCreateTaskForm(false);
+        setShowEditTaskForm(false);
+        setCurrentEditTask(null);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to rollover list. Status:', response.status);
+        console.error('❌ Error details:', errorData);
+        alert('Failed to rollover list. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error rolling over list:', error);
+      alert('Failed to rollover list. Please try again.');
+    }
+  };
+
     return (
         <div className="relative flex size-full min-h-screen flex-col bg-gray-50 group/design-root overflow-x-hidden" style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}>
             <div className="layout-container flex h-full grow flex-col">
@@ -607,13 +709,27 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                     <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
                         <div className="flex justify-between gap-2 px-4 py-3">
                         <div className="flex gap-2">
-                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded"
-                                    title="Rollover"
+                            <button 
+                                className={`p-2 rounded transition-colors ${
+                                  currentList 
+                                    ? 'text-[#111418] hover:bg-[#eaedf0]' 
+                                    : 'text-[#9ca3af] cursor-not-allowed'
+                                }`}
+                                title="Rollover - Move incomplete tasks to new version"
+                                onClick={handleRolloverList}
+                                disabled={!currentList}
                             >
                             <RecycleIcon />
                             </button>
-                            <button className="p-2 text-[#111418] hover:bg-[#eaedf0] rounded"
-                                    title = "Clear and Create New"
+                            <button 
+                                className={`p-2 rounded transition-colors ${
+                                  currentList 
+                                    ? 'text-[#111418] hover:bg-[#eaedf0]' 
+                                    : 'text-[#9ca3af] cursor-not-allowed'
+                                }`}
+                                title="Clear List - Remove all tasks"
+                                onClick={handleClearList}
+                                disabled={!currentList}
                             >
                             <SignOutIcon />
                             </button>
