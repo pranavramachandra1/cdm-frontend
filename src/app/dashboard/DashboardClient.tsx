@@ -88,6 +88,10 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0]);
   
+  // Mobile UI state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<'lists' | 'tasks' | 'details'>('tasks');
+  
   // Task editing form state:
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [showEditTaskForm, setShowEditTaskForm] = useState(false);
@@ -765,11 +769,75 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
 
     return (
         <div className="relative flex size-full min-h-screen flex-col bg-gray-50 group/design-root overflow-x-hidden" style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}>
-            <div className="layout-container flex h-full grow flex-col">
-                <div className="gap-1 px-6 flex flex-1 justify-center py-5">
+            {/* Mobile Navigation Bar */}
+            <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    {google.picture && (
+                        <Image
+                            src={google.picture}
+                            alt={`${user.first_name}'s profile`}
+                            width={32}
+                            height={32}
+                            className="w-8 h-8 rounded-full"
+                        />
+                    )}
+                    <div>
+                        <h1 className="text-[#111418] text-lg font-semibold">CarpeDoEm</h1>
+                    </div>
+                </div>
+                <button
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="p-2 rounded-lg hover:bg-gray-100"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Mobile Bottom Navigation */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-20">
+                <div className="flex justify-around">
+                    <button
+                        onClick={() => setActivePanel('lists')}
+                        className={`flex flex-col items-center py-2 px-4 rounded-lg min-h-[44px] ${activePanel === 'lists' ? 'bg-[#b8cee4] text-[#111418]' : 'text-[#5e7387]'}`}
+                    >
+                        <ListIcon />
+                        <span className="text-xs mt-1">Lists</span>
+                    </button>
+                    <button
+                        onClick={() => setActivePanel('tasks')}
+                        className={`flex flex-col items-center py-2 px-4 rounded-lg min-h-[44px] ${activePanel === 'tasks' ? 'bg-[#b8cee4] text-[#111418]' : 'text-[#5e7387]'}`}
+                    >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <span className="text-xs mt-1">Tasks</span>
+                    </button>
+                    <button
+                        onClick={() => setActivePanel('details')}
+                        className={`flex flex-col items-center py-2 px-4 rounded-lg min-h-[44px] ${activePanel === 'details' ? 'bg-[#b8cee4] text-[#111418]' : 'text-[#5e7387]'}`}
+                    >
+                        <PencilIcon />
+                        <span className="text-xs mt-1">Actions</span>
+                    </button>
+                </div>
+            </div>
+
+            <div className="layout-container flex h-full grow flex-col lg:flex-row">
+                <div className="flex flex-1 lg:gap-1 lg:px-6 lg:py-5">
                     {/* Left Sidebar - Navigation */}
-                    <div className="layout-content-container flex flex-col w-80">
-                        <div className="flex h-full min-h-[700px] flex-col justify-between bg-gray-50 p-4">
+                    <div className={`layout-content-container flex flex-col lg:w-80 ${activePanel === 'lists' ? 'block' : 'hidden'} lg:block absolute lg:relative inset-x-0 top-0 bottom-0 lg:inset-auto bg-white lg:bg-transparent z-10 lg:z-auto`}>
+                        <div className="flex h-full min-h-[700px] flex-col justify-between bg-gray-50 p-4 pt-16 lg:pt-4">
+                            {/* Mobile close button */}
+                            <button
+                                onClick={() => setActivePanel('tasks')}
+                                className="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-200 min-h-[44px] min-w-[44px]"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-3 mb-4">
                             {google.picture && (
@@ -799,8 +867,11 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                     type="text"
                                                     value={editListName}
                                                     onChange={(e) => setEditListName(e.target.value)}
-                                                    className="w-full px-2 py-1 border border-[#d5dbe2] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                                    className="w-full px-3 py-3 border border-[#d5dbe2] rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
                                                     autoFocus
+                                                    autoComplete="off"
+                                                    autoCorrect="off"
+                                                    autoCapitalize="words"
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') {
                                                             handleEditList(list.list_id);
@@ -814,7 +885,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                     <button
                                                         onClick={() => handleEditList(list.list_id)}
                                                         disabled={!editListName.trim() || isEditingList}
-                                                        className="flex-1 px-2 py-1 bg-[#b8cee4] text-[#111418] text-xs font-medium rounded hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                        className="flex-1 px-3 py-3 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-lg hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] touch-manipulation"
                                                     >
                                                         {isEditingList ? 'Saving...' : 'Save'}
                                                     </button>
@@ -823,14 +894,14 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                             setShowEditListForm(null);
                                                             setEditListName('');
                                                         }}
-                                                        className="px-2 py-1 bg-[#eaedf0] text-[#111418] text-xs font-medium rounded hover:bg-[#d5dbe2] transition-colors"
+                                                        className="px-3 py-3 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-lg hover:bg-[#d5dbe2] transition-colors min-h-[44px] touch-manipulation"
                                                     >
                                                         Cancel
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="relative flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#eaedf0] group">
+                                            <div className="relative flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#eaedf0] group min-h-[44px]">
                                                 <div 
                                                     className="flex items-center gap-3 flex-1 cursor-pointer"
                                                     onClick={() => {
@@ -851,7 +922,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                             e.stopPropagation();
                                                             setOpenDropdownId(openDropdownId === list.list_id ? null : list.list_id);
                                                         }}
-                                                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#d5dbe2] transition-all duration-200"
+                                                        className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-2 rounded hover:bg-[#d5dbe2] transition-all duration-200 min-h-[44px] min-w-[44px]"
                                                     >
                                                         <ThreeDotsIcon />
                                                     </button>
@@ -886,7 +957,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             {!showCreateListForm ? (
                                 <button 
                                 onClick={() => setShowCreateListForm(true)}
-                                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#b8cee4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#a5c1db] transition-colors"
+                                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl min-h-[44px] px-4 bg-[#b8cee4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#a5c1db] transition-colors"
                                 >
                                 <span className="truncate">New List</span>
                                 </button>
@@ -897,8 +968,11 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                     value={newListName}
                                     onChange={(e) => setNewListName(e.target.value)}
                                     placeholder="Enter list name..."
-                                    className="w-full px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                    className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
                                     autoFocus
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="words"
                                     onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         handleCreateList();
@@ -912,7 +986,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                     <button
                                     onClick={handleCreateList}
                                     disabled={!newListName.trim() || isCreatingList}
-                                    className="flex-1 px-3 py-2 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="flex-1 px-3 py-3 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
                                     >
                                     {isCreatingList ? 'Creating...' : 'Create'}
                                     </button>
@@ -921,7 +995,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         setShowCreateListForm(false);
                                         setNewListName('');
                                     }}
-                                    className="px-3 py-2 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors"
+                                    className="px-3 py-3 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px]"
                                     >
                                     Cancel
                                     </button>
@@ -941,11 +1015,20 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                     </div>
 
                     {/* Center - Task List */}
-                    <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+                    <div className={`layout-content-container flex flex-col lg:max-w-[960px] flex-1 ${activePanel === 'tasks' ? 'block' : 'hidden'} lg:block pb-20 lg:pb-0`}>
                         <div className="flex justify-between gap-2 px-4 py-3">
+                            {/* Mobile back button */}
+                            <button
+                                onClick={() => setActivePanel('lists')}
+                                className="lg:hidden p-2 rounded-lg hover:bg-gray-200 min-h-[44px] min-w-[44px]"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
                         <div className="flex gap-2">
                             <button 
-                                className={`p-2 rounded transition-colors ${
+                                className={`p-3 rounded-lg transition-colors min-h-[44px] min-w-[44px] ${
                                   currentList 
                                     ? 'text-[#111418] hover:bg-[#eaedf0]' 
                                     : 'text-[#9ca3af] cursor-not-allowed'
@@ -957,7 +1040,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             <RecycleIcon />
                             </button>
                             <button 
-                                className={`p-2 rounded transition-colors ${
+                                className={`p-3 rounded-lg transition-colors min-h-[44px] min-w-[44px] ${
                                   currentList 
                                     ? 'text-[#111418] hover:bg-[#eaedf0]' 
                                     : 'text-[#9ca3af] cursor-not-allowed'
@@ -1010,11 +1093,12 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                         {tasks.map((task) => (
                         <div
                             key={task.task_id}
-                            className={`flex items-center gap-4 bg-gray-50 px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-[#eaedf0] ${
+                            className={`flex items-center gap-4 bg-gray-50 px-4 min-h-[72px] py-3 justify-between cursor-pointer hover:bg-[#eaedf0] touch-manipulation ${
                             selectedTask?.task_id === task.task_id ? 'bg-[#eaedf0]' : ''
                             }`}
                             onClick={() => {
                             setSelectedTask(task);
+                            setActivePanel('details');
                             }}
                         >
                             <div className="flex items-center gap-3">
@@ -1024,9 +1108,8 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 onChange={(e) => {
                                 e.stopPropagation();
                                 toggleTaskCompletion(task.task_id);
-                                // updat
                                 }}
-                                className="w-5 h-5 rounded border-[#d5dbe2] text-[#b8cee4] focus:ring-[#b8cee4]"
+                                className="w-6 h-6 rounded border-[#d5dbe2] text-[#b8cee4] focus:ring-[#b8cee4] touch-manipulation"
                             />
                             <div className="flex flex-col justify-center">
                                 <p className={`text-[#111418] text-base font-medium leading-normal line-clamp-1 ${
@@ -1042,8 +1125,12 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             <div className="shrink-0">
                             <div className="text-[#111418] flex size-7 items-center justify-center">
                                 <button
-                                    onClick={() => startEditingTask(task)}
-                                    className="hover:bg-[#eaedf0] p-1 rounded transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEditingTask(task);
+                                        setActivePanel('details');
+                                    }}
+                                    className="hover:bg-[#eaedf0] p-3 rounded-lg transition-colors min-h-[44px] min-w-[44px] touch-manipulation"
                                     >
                                     <PencilIcon />
                                 </button>
@@ -1054,8 +1141,17 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                     </div>
 
                     {/* Right Sidebar - Task Creation/Edit Form */}
-                    <div className="layout-content-container flex flex-col w-80">
+                    <div className={`layout-content-container flex flex-col lg:w-80 ${activePanel === 'details' ? 'block' : 'hidden'} lg:block absolute lg:relative inset-x-0 top-0 bottom-0 lg:inset-auto bg-white lg:bg-transparent z-10 lg:z-auto pb-20 lg:pb-0`}>
                         <div className="flex items-center justify-between px-4 pb-3 pt-5">
+                            {/* Mobile back button */}
+                            <button
+                                onClick={() => setActivePanel('tasks')}
+                                className="lg:hidden p-2 rounded-lg hover:bg-gray-200 min-h-[44px] min-w-[44px] mr-2"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
                             <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em]">
                                 {showCreateTaskForm ? 'Create New Task' : 
                                  showEditTaskForm ? 'Edit Task' : 'Task Actions'}
@@ -1066,7 +1162,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                       setShowCreateTaskForm(true);
                                       setShowEditTaskForm(false);
                                     }}
-                                    className="text-sm bg-[#b8cee4] hover:bg-[#a5c1db] text-[#111418] px-3 py-1 rounded-lg font-medium transition-colors"
+                                    className="text-sm bg-[#b8cee4] hover:bg-[#a5c1db] text-[#111418] px-4 py-3 rounded-lg font-medium transition-colors min-h-[44px] touch-manipulation"
                                 >
                                     + Add Task
                                 </button>
@@ -1084,8 +1180,11 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         value={newTaskName}
                                         onChange={(e) => setNewTaskName(e.target.value)}
                                         placeholder="Enter task name..."
-                                        className="w-full px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                        className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
                                         autoFocus
+                                        autoComplete="off"
+                                        autoCorrect="off"
+                                        autoCapitalize="sentences"
                                     />
                                 </div>
 
@@ -1109,12 +1208,12 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                 value={reminder}
                                                 onChange={(e) => updateReminderDate(index, e.target.value)}
                                                 min={new Date().toISOString().slice(0, 16)}
-                                                className="flex-1 px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                                className="flex-1 px-4 py-4 border border-[#d5dbe2] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => removeReminderDate(index)}
-                                                className="text-red-500 hover:text-red-700 text-sm px-2"
+                                                className="text-red-500 hover:text-red-700 text-base p-3 min-h-[44px] min-w-[44px] touch-manipulation rounded-lg hover:bg-red-50"
                                             >
                                                 ✕
                                             </button>
@@ -1133,7 +1232,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         id="isPriority"
                                         checked={newTaskIsPriority}
                                         onChange={(e) => setNewTaskIsPriority(e.target.checked)}
-                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                        className="w-5 h-5 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4] touch-manipulation"
                                     />
                                     <label htmlFor="isPriority" className="text-[#111418] text-base font-medium cursor-pointer">
                                         High Priority
@@ -1147,7 +1246,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         id="isRecurring"
                                         checked={newTaskIsRecurring}
                                         onChange={(e) => setNewTaskIsRecurring(e.target.checked)}
-                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                        className="w-5 h-5 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4] touch-manipulation"
                                     />
                                     <label htmlFor="isRecurring" className="text-[#111418] text-base font-medium cursor-pointer">
                                         Recurring Task
@@ -1159,7 +1258,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                     <button
                                         onClick={handleCreateTask}
                                         disabled={!newTaskName.trim() || isCreatingTask}
-                                        className="flex-1 px-4 py-2 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        className="flex-1 px-4 py-4 bg-[#b8cee4] text-[#111418] text-base font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] touch-manipulation"
                                     >
                                         {isCreatingTask ? 'Creating...' : 'Create Task'}
                                     </button>
@@ -1171,7 +1270,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                             setNewTaskIsPriority(false);
                                             setNewTaskIsRecurring(false);
                                         }}
-                                        className="px-4 py-2 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors"
+                                        className="px-4 py-4 bg-[#eaedf0] text-[#111418] text-base font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px] touch-manipulation"
                                     >
                                         Cancel
                                     </button>
@@ -1187,8 +1286,11 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         value={editTaskName}
                                         onChange={(e) => setEditTaskName(e.target.value)}
                                         placeholder="Enter task name..."
-                                        className="w-full px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                        className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
                                         autoFocus
+                                        autoComplete="off"
+                                        autoCorrect="off"
+                                        autoCapitalize="sentences"
                                     />
                                 </div>
 
@@ -1212,12 +1314,12 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                 value={reminder}
                                                 onChange={(e) => updateEditReminderDate(index, e.target.value)}
                                                 min={new Date().toISOString().slice(0, 16)}
-                                                className="flex-1 px-3 py-2 border border-[#d5dbe2] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                                className="flex-1 px-4 py-4 border border-[#d5dbe2] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => removeEditReminderDate(index)}
-                                                className="text-red-500 hover:text-red-700 text-sm px-2"
+                                                className="text-red-500 hover:text-red-700 text-base p-3 min-h-[44px] min-w-[44px] touch-manipulation rounded-lg hover:bg-red-50"
                                             >
                                                 ✕
                                             </button>
@@ -1236,7 +1338,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         id="editIsPriority"
                                         checked={editTaskIsPriority}
                                         onChange={(e) => setEditTaskIsPriority(e.target.checked)}
-                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                        className="w-5 h-5 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4] touch-manipulation"
                                     />
                                     <label htmlFor="editIsPriority" className="text-[#111418] text-base font-medium cursor-pointer">
                                         High Priority
@@ -1250,7 +1352,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         id="editIsRecurring"
                                         checked={editTaskIsRecurring}
                                         onChange={(e) => setEditTaskIsRecurring(e.target.checked)}
-                                        className="w-4 h-4 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4]"
+                                        className="w-5 h-5 text-[#b8cee4] border-[#d5dbe2] rounded focus:ring-[#b8cee4] touch-manipulation"
                                     />
                                     <label htmlFor="editIsRecurring" className="text-[#111418] text-base font-medium cursor-pointer">
                                         Recurring Task
@@ -1262,13 +1364,13 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                     <button
                                         onClick={handleEditTask}
                                         disabled={!editTaskName.trim() || isEditingTask}
-                                        className="flex-1 px-4 py-2 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        className="flex-1 px-4 py-4 bg-[#b8cee4] text-[#111418] text-base font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] touch-manipulation"
                                     >
                                         {isEditingTask ? 'Updating...' : 'Update Task'}
                                     </button>
                                     <button
                                         onClick={handleDeleteTask}
-                                        className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-xl hover:bg-red-600 transition-colors"
+                                        className="px-4 py-4 bg-red-500 text-white text-base font-medium rounded-xl hover:bg-red-600 transition-colors min-h-[44px] touch-manipulation"
                                     >
                                         Delete
                                     </button>
@@ -1281,7 +1383,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                             setEditTaskIsRecurring(false);
                                             setCurrentEditTask(null);
                                         }}
-                                        className="px-4 py-2 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors"
+                                        className="px-4 py-4 bg-[#eaedf0] text-[#111418] text-base font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px] touch-manipulation"
                                     >
                                         Cancel
                                     </button>
