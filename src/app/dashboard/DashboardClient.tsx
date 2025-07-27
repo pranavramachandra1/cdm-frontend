@@ -1093,25 +1093,37 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                         {tasks.map((task) => (
                         <div
                             key={task.task_id}
-                            className={`flex items-center gap-4 bg-gray-50 px-4 min-h-[72px] py-3 justify-between cursor-pointer hover:bg-[#eaedf0] touch-manipulation ${
+                            className={`flex items-center gap-4 bg-gray-50 px-4 min-h-[72px] py-3 justify-between hover:bg-[#eaedf0] touch-manipulation ${
                             selectedTask?.task_id === task.task_id ? 'bg-[#eaedf0]' : ''
                             }`}
-                            onClick={() => {
-                            setSelectedTask(task);
-                            setActivePanel('details');
-                            }}
                         >
                             <div className="flex items-center gap-3">
-                            <input
-                                type="checkbox"
-                                checked={task.isComplete}
-                                onChange={(e) => {
-                                e.stopPropagation();
-                                toggleTaskCompletion(task.task_id);
+                            <div 
+                                className="flex items-center justify-center p-2 min-h-[44px] min-w-[44px] -ml-2 touch-manipulation"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    toggleTaskCompletion(task.task_id);
                                 }}
-                                className="w-6 h-6 rounded border-[#d5dbe2] text-[#b8cee4] focus:ring-[#b8cee4] touch-manipulation"
-                            />
-                            <div className="flex flex-col justify-center">
+                                onTouchStart={(e) => {
+                                    e.stopPropagation();
+                                }}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={task.isComplete}
+                                    onChange={() => {}} // Controlled by parent div click
+                                    className="w-6 h-6 rounded border-[#d5dbe2] text-[#b8cee4] focus:ring-[#b8cee4] pointer-events-none"
+                                    tabIndex={-1}
+                                />
+                            </div>
+                            <div 
+                                className="flex flex-col justify-center flex-1 cursor-pointer py-2 touch-manipulation"
+                                onClick={() => {
+                                    setSelectedTask(task);
+                                    setActivePanel('details');
+                                }}
+                            >
                                 <p className={`text-[#111418] text-base font-medium leading-normal line-clamp-1 ${
                                 task.isComplete ? 'line-through opacity-60' : ''
                                 }`}>
