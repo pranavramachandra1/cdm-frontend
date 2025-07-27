@@ -31,7 +31,24 @@ export interface UserUpdate {
   google_id?: string
 }
 
-export async function createUser(userData: UserCreate): Promise<any> {
+export interface UserResponse {
+  user_id: string;
+  username: string;
+  email: string;
+  phone_number: string;
+  first_name: string;
+  last_name: string;
+  google_id: string;
+  created_at: string;
+  last_updated_at: string;
+}
+
+interface DeleteUserResponse {
+  message: string;
+  user_id: string;
+}
+
+export async function createUser(userData: UserCreate): Promise<UserResponse> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/users`, {
     method: 'POST',
     headers: getHeaders(),
@@ -45,7 +62,7 @@ export async function createUser(userData: UserCreate): Promise<any> {
   return await response.json();
 }
 
-export async function getUser(user_id: string): Promise<any> {
+export async function getUser(user_id: string): Promise<UserResponse> {
     const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/${user_id}`, {
         method: 'GET',
         headers: getHeaders(),
@@ -62,7 +79,7 @@ export async function getUser(user_id: string): Promise<any> {
   return await response.json();
 }
 
-export async function getUserWithGoogleID(google_id: string): Promise<any> {
+export async function getUserWithGoogleID(google_id: string): Promise<UserResponse | null> {
     const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/google-id/${google_id}`, {
         method: 'GET',
         headers: getHeaders(),
@@ -80,7 +97,7 @@ export async function getUserWithGoogleID(google_id: string): Promise<any> {
     return await response.json();
 }
 
-export async function deleteUser(user_id: string): Promise<any> {
+export async function deleteUser(user_id: string): Promise<DeleteUserResponse> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/${user_id}`, {
     method: 'DELETE',
     headers: getHeaders(),
@@ -94,7 +111,7 @@ export async function deleteUser(user_id: string): Promise<any> {
   return await response.json();
 }
 
-export async function updateUser(user_id: string, userData: UserUpdate): Promise<any> {
+export async function updateUser(user_id: string, userData: UserUpdate): Promise<UserResponse> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/${user_id}`, {
     method: 'PUT',
     headers: getHeaders(),

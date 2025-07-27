@@ -89,7 +89,12 @@ export async function updateTask(taskId: string, updateData: TaskUpdate): Promis
   return response.json();
 }
 
-export async function deleteTask(taskId: string): Promise<any> {
+interface DeleteTaskResponse {
+  message: string;
+  task_id: string;
+}
+
+export async function deleteTask(taskId: string): Promise<DeleteTaskResponse> {
   const response = await fetch(`${BASE_URL}/tasks/${taskId}`, {
     method: 'DELETE',
     headers: getHeaders(),

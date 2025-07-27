@@ -133,7 +133,15 @@ export async function getAllLists(skip = 0, limit = 100, userId?: string): Promi
   return response.json();
 }
 
-export async function getListStats(listId: string): Promise<any> {
+interface ListStats {
+  total_tasks: number;
+  completed_tasks: number;
+  pending_tasks: number;
+  priority_tasks: number;
+  recurring_tasks: number;
+}
+
+export async function getListStats(listId: string): Promise<ListStats> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}/stats`, {
     headers: getHeaders(),
   });

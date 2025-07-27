@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { ListResponse } from '@/lib/lists';
 import { TaskCreate, TaskUpdate } from '@/lib/tasks';
 
@@ -122,7 +123,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     };
 
     fetchUserLists();
-  }, [user.user_id, user.google_id]);
+  }, [user]);
 
   // Separate useEffect to handle currentList changes and fetch tasks
   useEffect(() => {
@@ -130,13 +131,6 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
       setCurrentList(lists[0]);
     }
   }, [lists, currentList]);
-
-  // Update viewing version when current list changes
-  useEffect(() => {
-    if (currentList) {
-      setCurrentViewingVersion(currentList.version);
-    }
-  }, [currentList]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -150,27 +144,68 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     return () => document.removeEventListener('click', handleClickOutside);
   }, [openDropdownId]);
 
+  // Consolidated effect: Handle current list changes and fetch tasks
   useEffect(() => {
-    const fetchCurrentTasks = async () => {
+    const fetchTasksForCurrentList = async () => {
       if (!currentList) {
         return;
       }
 
       const listId = currentList.list_id;
+      const targetVersion = currentList.version;
+      
       console.log(`‼️ list_id is "${listId}" (type: ${typeof listId})`);
       console.log('‼️ currentList full object:', currentList);
+      console.log(`🎯 Setting viewing version to: ${targetVersion}`);
       
       if (!listId) {
         console.log('❌ No list ID found');
         return;
       }
       
-      // Use version-specific fetching with current viewing version
-      await fetchTasksForVersion(listId, currentViewingVersion);
+      // Update viewing version to current version and fetch tasks
+      setCurrentViewingVersion(targetVersion);
+      
+      // Use /current endpoint for the latest version
+      try {
+        console.log(`✅ Fetching current tasks for list: ${listId}`);
+        const response = await fetch(`/api/tasks/list/${listId}/current`);
+        console.log(`📨 Response status: ${response.status}`);
+        
+        if (response.ok) {
+          const currentTasks = await response.json();
+          console.log(`✅ Successfully loaded ${currentTasks.length} current tasks`);
+          setTasks(currentTasks);
+        } else {
+          const errorData = await response.json();
+          console.error(`❌ Failed to fetch current tasks. Status: ${response.status}`);
+          console.error('❌ Error details:', errorData);
+        }
+      } catch (error) {
+        console.error('Error fetching current tasks:', error);
+      }
     };
 
-    fetchCurrentTasks();
-  }, [currentList, currentViewingVersion]);
+    fetchTasksForCurrentList();
+  }, [currentList]);
+
+  // Separate effect for version navigation (only when user manually changes version)
+  useEffect(() => {
+    const fetchTasksForVersionEffect = async () => {
+      if (!currentList || currentViewingVersion === currentList.version) {
+        // Skip if viewing current version (handled by currentList effect)
+        return;
+      }
+
+      console.log(`🔍 Fetching tasks for version ${currentViewingVersion} (historical view)`);
+      await fetchTasksForVersion(currentList.list_id, currentViewingVersion);
+    };
+
+    // Only fetch if we have a valid current list and we're not viewing the current version
+    if (currentList && currentViewingVersion !== currentList.version && currentViewingVersion > 0) {
+      fetchTasksForVersionEffect();
+    }
+  }, [currentViewingVersion, currentList]);
 
   // Handle list creation
   const handleCreateList = async () => {
@@ -738,9 +773,11 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-3 mb-4">
                             {google.picture && (
-                                <img
+                                <Image
                                 src={google.picture}
                                 alt={`${user.first_name}'s profile`}
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 rounded-full"
                                 />
                             )}

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get the request body
-    let body = await request.json();
+    const body = await request.json();
 
     // Forward request to backend API
     const backendResponse = await createUser(userData = body)
@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get the request body
-    let body = await request.json();
+    const body = await request.json();
 
     // Forward request to backend API
     const backendResponse = await updateUser(user_id = user_id, userData = body);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserWithGoogleID, createUser, getUser, UserCreate } from '@/lib/users';
+import { getUserWithGoogleID, createUser, type UserCreate } from '@/lib/users';
 
 interface GoogleUserInfo {
   id: string;
