@@ -909,6 +909,8 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                         setCurrentList(list);
                                                         setCurrentViewingVersion(list.version); // Reset to current version when selecting list
                                                         setOpenDropdownId(null);
+                                                        // On mobile, automatically switch to tasks tab when list is selected
+                                                        setActivePanel('tasks');
                                                     }}
                                                 >
                                                     <div className="text-[#111418]">
