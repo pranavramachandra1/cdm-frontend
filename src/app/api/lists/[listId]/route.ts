@@ -3,10 +3,11 @@ import { getList, updateList, deleteList } from '@/lib/lists';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { listId: string } }
+  { params }: { params: Promise<{ listId: string }> }
 ) {
   try {
-    const result = await getList(params.listId);
+    const { listId } = await params;
+    const result = await getList(listId);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
@@ -18,11 +19,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { listId: string } }
+  { params }: { params: Promise<{ listId: string }> }
 ) {
   try {
+    const { listId } = await params;
     const body = await request.json();
-    const result = await updateList(params.listId, body);
+    const result = await updateList(listId, body);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
@@ -34,10 +36,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { listId: string } }
+  { params }: { params: Promise<{ listId: string }> }
 ) {
   try {
-    const result = await deleteList(params.listId);
+    const { listId } = await params;
+    const result = await deleteList(listId);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

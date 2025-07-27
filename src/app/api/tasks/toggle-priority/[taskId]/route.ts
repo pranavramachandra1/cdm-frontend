@@ -3,10 +3,14 @@ import { toggleTaskPriority } from '@/lib/tasks';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
-    const result = await toggleTaskPriority(params.taskId);
+    // Await params to get the actual taskId value
+    const { taskId } = await params;
+    
+    // Use the destructured taskId instead of params.taskId
+    const result = await toggleTaskPriority(taskId);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

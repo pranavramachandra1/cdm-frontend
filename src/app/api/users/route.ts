@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     // Extract user_id from URL path
     const url = new URL(request.url);
-    let user_id = url.searchParams.get("user_id")
+    const user_id = url.searchParams.get("user_id")
 
     if (!user_id || user_id === 'users') {
       return NextResponse.json(
@@ -16,14 +16,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward request to backend API
-    const backendResponse = await getUser(user_id=user_id);
-    // Get the response data from backend (could be success or error)
+    const backendResponse = await getUser(user_id);
     console.log(backendResponse)
-    // const data = await backendResponse.json();
-    // console.log(data)
 
     // Pass through the exact response from backend
-    return NextResponse.json(backendResponse, { status: backendResponse.status });
+    return NextResponse.json(backendResponse, { status: 200 });
 
   } catch (error) {
     console.error('Error communicating with backend:', error);
@@ -41,13 +38,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Forward request to backend API
-    const backendResponse = await createUser(userData = body)
+    const backendResponse = await createUser(body)
 
-    // Get the response data
-    const data = await backendResponse.json();
-
-    // Return the backend response with the same status code
-    return NextResponse.json(data, { status: backendResponse.status });
+    // Return the backend response with success status
+    return NextResponse.json(backendResponse, { status: 201 });
 
   } catch (error) {
     console.error('Error communicating with backend:', error);
@@ -64,7 +58,7 @@ export async function PUT(request: NextRequest) {
     // Extract user_id from URL path
     const url = new URL(request.url);
     const pathSegments = url.pathname.split('/');
-    let user_id = pathSegments[pathSegments.length - 1];
+    const user_id = pathSegments[pathSegments.length - 1];
 
     if (!user_id || user_id === 'users') {
       return NextResponse.json(
@@ -77,13 +71,10 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
 
     // Forward request to backend API
-    const backendResponse = await updateUser(user_id = user_id, userData = body);
+    const backendResponse = await updateUser(user_id, body);
 
-    // Get the response data
-    const data = await backendResponse.json();
-
-    // Return the backend response with the same status code
-    return NextResponse.json(data, { status: backendResponse.status });
+    // Return the backend response with success status
+    return NextResponse.json(backendResponse, { status: 200 });
 
   } catch (error) {
     console.error('Error communicating with backend:', error);
@@ -110,13 +101,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Forward request to backend API
-    const backendResponse = await deleteUser(user_id = user_id)
+    const backendResponse = await deleteUser(user_id)
 
-    // Get the response data
-    const data = await backendResponse.json();
-
-    // Return the backend response with the same status code
-    return NextResponse.json(data, { status: backendResponse.status });
+    // Return the backend response with success status
+    return NextResponse.json(backendResponse, { status: 200 });
 
   } catch (error) {
     console.error('Error communicating with backend:', error);

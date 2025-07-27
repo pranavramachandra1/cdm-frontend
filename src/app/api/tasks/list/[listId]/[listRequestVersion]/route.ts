@@ -3,11 +3,14 @@ import { getTasksFromListVersion } from '@/lib/tasks';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { listId: string, listRequestVersion: string } }
+  { params }: { params: Promise<{ listId: string, listRequestVersion: string }> }
 ) {
   try {
-    const listRequestVersion = parseInt(params.listRequestVersion);
+    // First, await the params to get the actual values
+    const { listId, listRequestVersion: listRequestVersionString } = await params;
     
+    // Then parse the version number
+    const listRequestVersion = parseInt(listRequestVersionString);
     if (isNaN(listRequestVersion)) {
       return NextResponse.json(
         { error: 'Invalid version number' },
@@ -15,7 +18,8 @@ export async function GET(
       );
     }
 
-    const result = await getTasksFromListVersion(params.listId, listRequestVersion);
+    // Use the destructured values
+    const result = await getTasksFromListVersion(listId, listRequestVersion);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

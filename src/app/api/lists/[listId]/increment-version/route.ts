@@ -3,10 +3,11 @@ import { incrementListVersion } from '@/lib/lists';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { listId: string } }
+  { params }: { params: Promise<{ listId: string }> }
 ) {
   try {
-    const result = await incrementListVersion(params.listId);
+    const { listId } = await params;
+    const result = await incrementListVersion(listId);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
