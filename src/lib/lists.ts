@@ -1,3 +1,16 @@
+// Helper function to create headers with API key
+const getHeaders = () => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (process.env.API_KEY) {
+    headers['X-API-Key'] = process.env.API_KEY;
+  }
+  
+  return headers;
+};
+
 export interface ListCreate {
   user_id: string;
   list_name: string;
@@ -24,9 +37,7 @@ export interface ListResponse {
 export async function createList(listData: ListCreate): Promise<ListResponse> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(listData),
   });
 
@@ -38,7 +49,9 @@ export async function createList(listData: ListCreate): Promise<ListResponse> {
 }
 
 export async function getList(listId: string): Promise<ListResponse> {
-  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}`);
+  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}`, {
+    headers: getHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to get list: ${response.statusText}`);
@@ -50,9 +63,7 @@ export async function getList(listId: string): Promise<ListResponse> {
 export async function updateList(listId: string, updateData: ListUpdate): Promise<ListResponse> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(updateData),
   });
 
@@ -66,6 +77,7 @@ export async function updateList(listId: string, updateData: ListUpdate): Promis
 export async function deleteList(listId: string): Promise<{ message: string; list_id: string }> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}`, {
     method: 'DELETE',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -76,7 +88,9 @@ export async function deleteList(listId: string): Promise<{ message: string; lis
 }
 
 export async function getUserLists(userId: string): Promise<ListResponse[]> {
-  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/user/${userId}`);
+  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/user/${userId}`, {
+    headers: getHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to get user lists: ${response.statusText}`);
@@ -88,6 +102,7 @@ export async function getUserLists(userId: string): Promise<ListResponse[]> {
 export async function incrementListVersion(listId: string): Promise<ListResponse> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}/increment-version`, {
     method: 'PATCH',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -107,7 +122,9 @@ export async function getAllLists(skip = 0, limit = 100, userId?: string): Promi
     params.append('user_id', userId);
   }
 
-  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/?${params.toString()}`);
+  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/?${params.toString()}`, {
+    headers: getHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to get all lists: ${response.statusText}`);
@@ -117,7 +134,9 @@ export async function getAllLists(skip = 0, limit = 100, userId?: string): Promi
 }
 
 export async function getListStats(listId: string): Promise<any> {
-  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}/stats`);
+  const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/${listId}/stats`, {
+    headers: getHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to get list stats: ${response.statusText}`);

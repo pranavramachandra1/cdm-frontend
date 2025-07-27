@@ -1,5 +1,18 @@
 const BASE_URL = process.env.BACKEND_BASE_URL || 'http://127.0.0.1:8000';
 
+// Helper function to create headers with API key
+const getHeaders = () => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (process.env.API_KEY) {
+    headers['X-API-Key'] = process.env.API_KEY;
+  }
+  
+  return headers;
+};
+
 export interface TaskCreate {
   user_id: string;
   list_id: string;
@@ -39,9 +52,7 @@ export interface TaskResponse {
 export async function createTask(taskData: TaskCreate): Promise<TaskResponse> {
   const response = await fetch(`${BASE_URL}/tasks/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(taskData),
   });
 
@@ -53,7 +64,9 @@ export async function createTask(taskData: TaskCreate): Promise<TaskResponse> {
 }
 
 export async function getTask(taskId: string): Promise<TaskResponse> {
-  const response = await fetch(`${BASE_URL}/tasks/${taskId}`);
+  const response = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+    headers: getHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to get task: ${response.statusText}`);
@@ -65,9 +78,7 @@ export async function getTask(taskId: string): Promise<TaskResponse> {
 export async function updateTask(taskId: string, updateData: TaskUpdate): Promise<TaskResponse> {
   const response = await fetch(`${BASE_URL}/tasks/${taskId}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(updateData),
   });
 
@@ -81,6 +92,7 @@ export async function updateTask(taskId: string, updateData: TaskUpdate): Promis
 export async function deleteTask(taskId: string): Promise<any> {
   const response = await fetch(`${BASE_URL}/tasks/${taskId}`, {
     method: 'DELETE',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -93,6 +105,7 @@ export async function deleteTask(taskId: string): Promise<any> {
 export async function toggleTaskComplete(taskId: string): Promise<TaskResponse> {
   const response = await fetch(`${BASE_URL}/tasks/toggle-complete/${taskId}`, {
     method: 'PATCH',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -105,6 +118,7 @@ export async function toggleTaskComplete(taskId: string): Promise<TaskResponse> 
 export async function toggleTaskRecurring(taskId: string): Promise<TaskResponse> {
   const response = await fetch(`${BASE_URL}/tasks/toggle-recurring/${taskId}`, {
     method: 'PATCH',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -117,6 +131,7 @@ export async function toggleTaskRecurring(taskId: string): Promise<TaskResponse>
 export async function toggleTaskPriority(taskId: string): Promise<TaskResponse> {
   const response = await fetch(`${BASE_URL}/tasks/toggle-priority/${taskId}`, {
     method: 'PATCH',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -129,6 +144,7 @@ export async function toggleTaskPriority(taskId: string): Promise<TaskResponse> 
 export async function clearListTasks(listId: string): Promise<TaskResponse[]> {
   const response = await fetch(`${BASE_URL}/tasks/clear-list/${listId}`, {
     method: 'PATCH',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -141,6 +157,7 @@ export async function clearListTasks(listId: string): Promise<TaskResponse[]> {
 export async function rolloverList(listId: string): Promise<TaskResponse[]> {
   const response = await fetch(`${BASE_URL}/tasks/rollover-list/${listId}`, {
     method: 'POST',
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -151,7 +168,9 @@ export async function rolloverList(listId: string): Promise<TaskResponse[]> {
 }
 
 export async function getCurrentListTasks(listId: string): Promise<TaskResponse[]> {
-  const response = await fetch(`${BASE_URL}/tasks/list/${listId}/current`);
+  const response = await fetch(`${BASE_URL}/tasks/list/${listId}/current`, {
+    headers: getHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to get current list tasks: ${response.statusText}`);
@@ -170,10 +189,27 @@ export async function getListTaskVersions(
     page_end: pageEnd.toString(),
   });
 
-  const response = await fetch(`${BASE_URL}/tasks/list/${listId}/versions?${params.toString()}`);
+  const response = await fetch(`${BASE_URL}/tasks/list/${listId}/versions?${params.toString()}`, {
+    headers: getHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to get list task versions: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+export async function getTasksFromListVersion(
+  listId: string,
+  listRequestVersion: number
+): Promise<TaskResponse[]> {
+  const response = await fetch(`${BASE_URL}/tasks/list/${listId}/version/${listRequestVersion}`, {
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get tasks from list version: ${response.statusText}`);
   }
 
   return response.json();

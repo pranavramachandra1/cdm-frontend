@@ -1,3 +1,16 @@
+// Helper function to create headers with API key
+const getHeaders = () => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (process.env.API_KEY) {
+    headers['X-API-Key'] = process.env.API_KEY;
+  }
+  
+  return headers;
+};
+
 export interface UserCreate {
   username: string
   email: string
@@ -21,9 +34,7 @@ export interface UserUpdate {
 export async function createUser(userData: UserCreate): Promise<any> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/users`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(userData)
   });
 
@@ -37,10 +48,8 @@ export async function createUser(userData: UserCreate): Promise<any> {
 export async function getUser(user_id: string): Promise<any> {
     const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/${user_id}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            }
-            // No body needed for GET requests
+        headers: getHeaders(),
+        // No body needed for GET requests
         });
     
     // console.log(response)
@@ -56,10 +65,8 @@ export async function getUser(user_id: string): Promise<any> {
 export async function getUserWithGoogleID(google_id: string): Promise<any> {
     const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/google-id/${google_id}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            }
-            // No body needed for GET requests
+        headers: getHeaders(),
+        // No body needed for GET requests
         });
 
     // console.log(response)
@@ -76,9 +83,7 @@ export async function getUserWithGoogleID(google_id: string): Promise<any> {
 export async function deleteUser(user_id: string): Promise<any> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/${user_id}`, {
     method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    }
+    headers: getHeaders(),
     // No body needed for DELETE requests
   });
 
@@ -92,9 +97,7 @@ export async function deleteUser(user_id: string): Promise<any> {
 export async function updateUser(user_id: string, userData: UserUpdate): Promise<any> {
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/users/${user_id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(userData)
   });
 

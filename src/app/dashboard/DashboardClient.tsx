@@ -73,6 +73,9 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [editListName, setEditListName] = useState('');
   const [isEditingList, setIsEditingList] = useState(false);
   const [isDeletingList, setIsDeletingList] = useState(false);
+  
+  // Version state management
+  const [currentViewingVersion, setCurrentViewingVersion] = useState<number>(0);
 
   // Task creation form state
   const [showCreateTaskForm, setShowCreateTaskForm] = useState(false);
@@ -128,6 +131,13 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     }
   }, [lists, currentList]);
 
+  // Update viewing version when current list changes
+  useEffect(() => {
+    if (currentList) {
+      setCurrentViewingVersion(currentList.version);
+    }
+  }, [currentList]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
@@ -154,29 +164,13 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         console.log('❌ No list ID found');
         return;
       }
-      console.log('✅ Fetching tasks for list:', listId);
-      try {
-        const url = `/api/tasks/list/${listId}/current`;
-        console.log(`📍 Fetching URL: ${url}`);
-        const response = await fetch(url);
-        console.log(`📨 Response status: ${response.status}`);
-        
-        if (response.ok) {
-          const currentTasks = await response.json();
-          console.log(`✅ Successfully loaded ${currentTasks.length} tasks`);
-          setTasks(currentTasks);
-        } else {
-          const errorData = await response.json();
-          console.error(`❌ Failed to fetch tasks. Status: ${response.status}`);
-          console.error('❌ Error details:', errorData);
-        }
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      }
+      
+      // Use version-specific fetching with current viewing version
+      await fetchTasksForVersion(listId, currentViewingVersion);
     };
 
     fetchCurrentTasks();
-  }, [currentList]);
+  }, [currentList, currentViewingVersion]);
 
   // Handle list creation
   const handleCreateList = async () => {
@@ -312,6 +306,47 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     setShowEditListForm(list.list_id);
     setEditListName(list.list_name);
     setOpenDropdownId(null);
+  };
+
+  // Version navigation functions
+  const navigateToNextVersion = async () => {
+    if (!currentList) return;
+    
+    const nextVersion = currentViewingVersion + 1;
+    if (nextVersion > currentList.version) return; // Don't go beyond current version
+    
+    setCurrentViewingVersion(nextVersion);
+    await fetchTasksForVersion(currentList.list_id, nextVersion);
+  };
+
+  const navigateToPreviousVersion = async () => {
+    if (!currentList) return;
+    
+    const prevVersion = currentViewingVersion - 1;
+    if (prevVersion < 1) return; // Don't go below version 1
+    
+    setCurrentViewingVersion(prevVersion);
+    await fetchTasksForVersion(currentList.list_id, prevVersion);
+  };
+
+  // Fetch tasks for a specific version
+  const fetchTasksForVersion = async (listId: string, version: number) => {
+    try {
+      console.log(`🔍 Fetching tasks for list ${listId}, version ${version}`);
+      const response = await fetch(`/api/tasks/list/${listId}/${version}`);
+      
+      if (response.ok) {
+        const versionTasks = await response.json();
+        console.log(`✅ Successfully loaded ${versionTasks.length} tasks for version ${version}`);
+        setTasks(versionTasks);
+      } else {
+        const errorData = await response.json();
+        console.error(`❌ Failed to fetch tasks for version ${version}. Status: ${response.status}`);
+        console.error('❌ Error details:', errorData);
+      }
+    } catch (error) {
+      console.error('Error fetching tasks for version:', error);
+    }
   };
 
   // Handle task creation
@@ -764,6 +799,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                                     onClick={() => {
                                                         console.log('Selected list:', list.list_name);
                                                         setCurrentList(list);
+                                                        setCurrentViewingVersion(list.version); // Reset to current version when selecting list
                                                         setOpenDropdownId(null);
                                                     }}
                                                 >
@@ -897,9 +933,42 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </button>
                         </div>
                         </div>
-                        <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
-                        {currentList?.list_name}
-                        </h2>
+                        <div className="flex items-center justify-between px-4 pb-3 pt-5">
+                            <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em]">
+                                {currentList?.list_name}
+                            </h2>
+                            {currentList && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={navigateToNextVersion}
+                                        disabled={currentViewingVersion >= currentList.version}
+                                        className={`p-1 rounded transition-colors ${
+                                            currentViewingVersion >= currentList.version
+                                                ? 'text-gray-300 cursor-not-allowed'
+                                                : 'text-[#111418] hover:bg-[#eaedf0]'
+                                        }`}
+                                        title="View newer version"
+                                    >
+                                        <TriangleLeftIcon />
+                                    </button>
+                                    <span className="text-[#5e7387] text-sm font-medium px-2">
+                                        v{currentViewingVersion}
+                                    </span>
+                                    <button
+                                        onClick={navigateToPreviousVersion}
+                                        disabled={currentViewingVersion <= 0}
+                                        className={`p-1 rounded transition-colors ${
+                                            currentViewingVersion <= 0
+                                                ? 'text-gray-300 cursor-not-allowed'
+                                                : 'text-[#111418] hover:bg-[#eaedf0]'
+                                        }`}
+                                        title="View older version"
+                                    >
+                                        <TriangleRightIcon />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                         
                         {tasks.map((task) => (
                         <div
@@ -1225,5 +1294,17 @@ const SignOutIcon = () => (
 const ThreeDotsIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" fill="currentColor" viewBox="0 0 256 256">
     <path d="M144,128a16,16,0,1,1-16-16A16,16,0,0,1,144,128ZM60,112a16,16,0,1,0,16,16A16,16,0,0,0,60,112Zm136,0a16,16,0,1,0,16,16A16,16,0,0,0,196,112Z"></path>
+  </svg>
+);
+
+const TriangleLeftIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="12px" height="12px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M163.06,40.61a8,8,0,0,1,1.34,8.95L136.71,128l27.69,78.44a8,8,0,0,1-15.18,5.34l-32-92a8,8,0,0,1,0-5.56l32-92A8,8,0,0,1,163.06,40.61Z"></path>
+  </svg>
+);
+
+const TriangleRightIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="12px" height="12px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M106.94,215.39a8,8,0,0,1-1.34-8.95L133.29,128,105.6,49.56a8,8,0,0,1,15.18-5.34l32,92a8,8,0,0,1,0,5.56l-32,92A8,8,0,0,1,106.94,215.39Z"></path>
   </svg>
 );
