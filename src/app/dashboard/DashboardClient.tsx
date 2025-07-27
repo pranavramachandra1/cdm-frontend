@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ListResponse } from '@/lib/lists';
-import { TaskCreate, TaskUpdate, deleteTask } from '@/lib/tasks';
+import { TaskCreate, TaskUpdate } from '@/lib/tasks';
 
 interface GoogleUserInfo {
   id: string;
@@ -22,14 +22,6 @@ interface User {
   google_id: string;
 }
 
-interface List {
-    list_id?: string;
-    user_id?: string;
-    list_name?: string;
-    created_at?: Date;
-    last_updated_at?: Date;
-    version?: string;
-}
 
 interface SessionData {
   google: GoogleUserInfo;
@@ -50,7 +42,6 @@ interface Task {
   list_id: string;
 }
 
-type NavigationItem = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'completed' | 'trash';
 
 // const BASE_URL = process.env.BASE_URL
 
@@ -61,7 +52,7 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ userSessionData }: DashboardClientProps) {
   console.log('🚀 CLIENT: DashboardClient rendering');
-  const { user, google, isNewUser } = userSessionData;
+  const { user, google } = userSessionData;
   
   console.log('🚀 DashboardClient rendering with user:', user);
 
@@ -75,6 +66,13 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [newListName, setNewListName] = useState('');
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [currentList, setCurrentList] = useState<ListResponse | null>(null);
+  
+  // List edit/delete state
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [showEditListForm, setShowEditListForm] = useState<string | null>(null);
+  const [editListName, setEditListName] = useState('');
+  const [isEditingList, setIsEditingList] = useState(false);
+  const [isDeletingList, setIsDeletingList] = useState(false);
 
   // Task creation form state
   const [showCreateTaskForm, setShowCreateTaskForm] = useState(false);
@@ -85,7 +83,6 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [isCreatingTask, setIsCreatingTask] = useState(false);
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0]);
-  const [taskName, setTaskName] = useState('');
   
   // Task editing form state:
   const [isEditingTask, setIsEditingTask] = useState(false);
@@ -130,6 +127,18 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
       setCurrentList(lists[0]);
     }
   }, [lists, currentList]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (openDropdownId) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openDropdownId]);
 
   useEffect(() => {
     const fetchCurrentTasks = async () => {
@@ -211,6 +220,98 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     } finally {
       setIsCreatingList(false);
     }
+  };
+
+  // Handle list edit
+  const handleEditList = async (listId: string) => {
+    if (!editListName.trim()) {
+      console.log('❌ No list name provided');
+      return;
+    }
+    
+    setIsEditingList(true);
+    try {
+      const response = await fetch(`/api/lists/${listId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          list_name: editListName.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const updatedList = await response.json();
+        setLists(prev => prev.map(list => 
+          list.list_id === listId ? updatedList : list
+        ));
+        
+        // Update current list if it's the one being edited
+        if (currentList?.list_id === listId) {
+          setCurrentList(updatedList);
+        }
+        
+        setShowEditListForm(null);
+        setEditListName('');
+        setOpenDropdownId(null);
+        
+        console.log('✅ List updated:', updatedList);
+      } else {
+        console.error('Failed to update list');
+      }
+    } catch (error) {
+      console.error('Error updating list:', error);
+    } finally {
+      setIsEditingList(false);
+    }
+  };
+
+  // Handle list delete
+  const handleDeleteList = async (listId: string) => {
+    const listToDelete = lists.find(list => list.list_id === listId);
+    if (!listToDelete) return;
+    
+    if (!confirm(`Are you sure you want to delete "${listToDelete.list_name}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setIsDeletingList(true);
+    try {
+      const response = await fetch(`/api/lists/${listId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setLists(prev => prev.filter(list => list.list_id !== listId));
+        
+        // If deleting current list, switch to another list or null
+        if (currentList?.list_id === listId) {
+          const remainingLists = lists.filter(list => list.list_id !== listId);
+          setCurrentList(remainingLists.length > 0 ? remainingLists[0] : null);
+          setTasks([]); // Clear tasks when list is deleted
+        }
+        
+        setOpenDropdownId(null);
+        
+        console.log('✅ List deleted successfully');
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to delete list. Status:', response.status);
+        console.error('❌ Error details:', errorData);
+      }
+    } catch (error) {
+      console.error('Error deleting list:', error);
+    } finally {
+      setIsDeletingList(false);
+    }
+  };
+
+  // Start editing a list
+  const startEditingList = (list: ListResponse) => {
+    setShowEditListForm(list.list_id);
+    setEditListName(list.list_name);
+    setOpenDropdownId(null);
   };
 
   // Handle task creation
@@ -489,14 +590,6 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     }
   };
 
-  const updateTaskName = (newName: string) => {
-    if (selectedTask) {
-      setTasks(tasks.map(task => 
-        task.task_id === selectedTask.task_id ? { ...task, task_name: newName } : task
-      ));
-      setSelectedTask({ ...selectedTask, task_name: newName });
-    }
-  };
 
   const handleClearList = async () => {
     if (!currentList) {
@@ -627,19 +720,88 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 <div className="flex flex-col gap-1">
                                     <p className="text-[#5e7387] text-xs font-medium px-3 mb-1">My Lists</p>
                                     {lists.map((list) => (
-                                    <div
-                                        key={list.list_id}
-                                        className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-[#eaedf0]"
-                                        onClick={() => {
-                                        // TODO: Set active list and load list tasks
-                                        console.log('Selected list:', list.list_name);
-                                        setCurrentList(list);
-                                        }}
-                                    >
-                                        <div className="text-[#111418]">
-                                        <ListIcon />
-                                        </div>
-                                        <p className="text-[#111418] text-sm font-medium leading-normal">{list.list_name}</p>
+                                    <div key={list.list_id}>
+                                        {showEditListForm === list.list_id ? (
+                                            <div className="flex flex-col gap-2 px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={editListName}
+                                                    onChange={(e) => setEditListName(e.target.value)}
+                                                    className="w-full px-2 py-1 border border-[#d5dbe2] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#b8cee4] focus:border-[#b8cee4]"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            handleEditList(list.list_id);
+                                                        } else if (e.key === 'Escape') {
+                                                            setShowEditListForm(null);
+                                                            setEditListName('');
+                                                        }
+                                                    }}
+                                                />
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        onClick={() => handleEditList(list.list_id)}
+                                                        disabled={!editListName.trim() || isEditingList}
+                                                        className="flex-1 px-2 py-1 bg-[#b8cee4] text-[#111418] text-xs font-medium rounded hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        {isEditingList ? 'Saving...' : 'Save'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowEditListForm(null);
+                                                            setEditListName('');
+                                                        }}
+                                                        className="px-2 py-1 bg-[#eaedf0] text-[#111418] text-xs font-medium rounded hover:bg-[#d5dbe2] transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="relative flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#eaedf0] group">
+                                                <div 
+                                                    className="flex items-center gap-3 flex-1 cursor-pointer"
+                                                    onClick={() => {
+                                                        console.log('Selected list:', list.list_name);
+                                                        setCurrentList(list);
+                                                        setOpenDropdownId(null);
+                                                    }}
+                                                >
+                                                    <div className="text-[#111418]">
+                                                        <ListIcon />
+                                                    </div>
+                                                    <p className="text-[#111418] text-sm font-medium leading-normal">{list.list_name}</p>
+                                                </div>
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenDropdownId(openDropdownId === list.list_id ? null : list.list_id);
+                                                        }}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#d5dbe2] transition-all duration-200"
+                                                    >
+                                                        <ThreeDotsIcon />
+                                                    </button>
+                                                    {openDropdownId === list.list_id && (
+                                                        <div className="absolute right-0 top-8 bg-white border border-[#d5dbe2] rounded-lg shadow-lg py-1 z-10 min-w-[120px]">
+                                                            <button
+                                                                onClick={() => startEditingList(list)}
+                                                                className="w-full text-left px-3 py-2 text-sm text-[#111418] hover:bg-[#eaedf0] transition-colors"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteList(list.list_id)}
+                                                                disabled={isDeletingList}
+                                                                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                                            >
+                                                                {isDeletingList ? 'Deleting...' : 'Delete'}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     ))}
                                 </div>
@@ -1042,18 +1204,6 @@ const ListIcon = () => (
   </svg>
 );
 
-const CheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-    <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-    <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"></path>
-  </svg>
-);
-
 const PencilIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
     <path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"></path>
@@ -1066,37 +1216,14 @@ const RecycleIcon = () => (
   </svg>
 );
 
-const ResetIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24px"
-    height="24px"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    // strokeLinejoin="round"
-    viewBox="0 0 24 24"
-  >
-    <path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-5.2 9.7" />
-    
-  </svg>
-);
-
-const ArrowRightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-    <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path>
-  </svg>
-);
-
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-    <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
-  </svg>
-);
-
 const SignOutIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
     <path d="M112,216a8,8,0,0,1-8,8H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h56a8,8,0,0,1,0,16H48V208h56A8,8,0,0,1,112,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L196.69,120H104a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,221.66,122.34Z"></path>
+  </svg>
+);
+
+const ThreeDotsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M144,128a16,16,0,1,1-16-16A16,16,0,0,1,144,128ZM60,112a16,16,0,1,0,16,16A16,16,0,0,0,60,112Zm136,0a16,16,0,1,0,16,16A16,16,0,0,0,196,112Z"></path>
   </svg>
 );
