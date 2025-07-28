@@ -444,6 +444,9 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         setNewTaskIsRecurring(false);
         setShowCreateTaskForm(false);
         
+        // On mobile, redirect to tasks pane after creating task
+        setActivePanel('tasks');
+        
         console.log('✅ Task created:', newTask);
       } else {
         const errorData = await response.json();
@@ -510,6 +513,9 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         setShowEditTaskForm(false);
         setCurrentEditTask(null);
         
+        // On mobile, redirect to tasks pane after editing task
+        setActivePanel('tasks');
+        
         console.log('✅ Task edited:', updatedTask);
       } else {
         const errorData = await response.json();
@@ -551,6 +557,9 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         setEditTaskIsRecurring(false);
         setShowEditTaskForm(false);
         setCurrentEditTask(null);
+        
+        // On mobile, redirect to tasks pane after deleting task
+        setActivePanel('tasks');
         
         console.log('✅ Task deleted successfully');
       } else {
@@ -855,6 +864,56 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </div>
                             </div>
                             <div className="flex flex-col gap-2">
+                            {/* New List Button / Form */}
+                            {!showCreateListForm ? (
+                                <button 
+                                onClick={() => setShowCreateListForm(true)}
+                                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl min-h-[44px] px-4 bg-[#b8cee4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#a5c1db] transition-colors"
+                                >
+                                <span className="truncate">New List</span>
+                                </button>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                <input
+                                    type="text"
+                                    value={newListName}
+                                    onChange={(e) => setNewListName(e.target.value)}
+                                    placeholder="Enter list name..."
+                                    className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
+                                    autoFocus
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="words"
+                                    onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleCreateList();
+                                    } else if (e.key === 'Escape') {
+                                        setShowCreateListForm(false);
+                                        setNewListName('');
+                                    }
+                                    }}
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                    onClick={handleCreateList}
+                                    disabled={!newListName.trim() || isCreatingList}
+                                    className="flex-1 px-3 py-3 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
+                                    >
+                                    {isCreatingList ? 'Creating...' : 'Create'}
+                                    </button>
+                                    <button
+                                    onClick={() => {
+                                        setShowCreateListForm(false);
+                                        setNewListName('');
+                                    }}
+                                    className="px-3 py-3 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px]"
+                                    >
+                                    Cancel
+                                    </button>
+                                </div>
+                                </div>
+                            )}
+                            
                             {/* User's Lists Section */}
                             {lists.length > 0 && (
                                 <div className="flex flex-col gap-1">
@@ -955,62 +1014,8 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </div>
                         </div>
                         <div className="flex flex-col gap-4">
-                            {/* New List Button / Form */}
-                            {!showCreateListForm ? (
-                                <button 
-                                onClick={() => setShowCreateListForm(true)}
-                                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl min-h-[44px] px-4 bg-[#b8cee4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#a5c1db] transition-colors"
-                                >
-                                <span className="truncate">New List</span>
-                                </button>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                <input
-                                    type="text"
-                                    value={newListName}
-                                    onChange={(e) => setNewListName(e.target.value)}
-                                    placeholder="Enter list name..."
-                                    className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#b8cee4] focus:border-[#b8cee4] min-h-[44px] touch-manipulation"
-                                    autoFocus
-                                    autoComplete="off"
-                                    autoCorrect="off"
-                                    autoCapitalize="words"
-                                    onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleCreateList();
-                                    } else if (e.key === 'Escape') {
-                                        setShowCreateListForm(false);
-                                        setNewListName('');
-                                    }
-                                    }}
-                                />
-                                <div className="flex gap-2">
-                                    <button
-                                    onClick={handleCreateList}
-                                    disabled={!newListName.trim() || isCreatingList}
-                                    className="flex-1 px-3 py-3 bg-[#b8cee4] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#a5c1db] disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
-                                    >
-                                    {isCreatingList ? 'Creating...' : 'Create'}
-                                    </button>
-                                    <button
-                                    onClick={() => {
-                                        setShowCreateListForm(false);
-                                        setNewListName('');
-                                    }}
-                                    className="px-3 py-3 bg-[#eaedf0] text-[#111418] text-sm font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px]"
-                                    >
-                                    Cancel
-                                    </button>
-                                </div>
-                                </div>
-                            )}
                             <div className="flex flex-col gap-1">
-                            {/* <div className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#eaedf0] rounded-xl">
-                                <div className="text-[#111418]">
-                                <TrashIcon />
-                                </div>
-                                <p className="text-[#111418] text-sm font-medium leading-normal">Trash</p>
-                            </div> */}
+                            {/* Future features like Trash can go here */}
                             </div>
                         </div>
                         </div>
@@ -1283,6 +1288,8 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                             setNewTaskReminders([]);
                                             setNewTaskIsPriority(false);
                                             setNewTaskIsRecurring(false);
+                                            // On mobile, redirect to tasks pane after canceling
+                                            setActivePanel('tasks');
                                         }}
                                         className="px-4 py-4 bg-[#eaedf0] text-[#111418] text-base font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px] touch-manipulation"
                                     >
@@ -1396,6 +1403,8 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                             setEditTaskIsPriority(false);
                                             setEditTaskIsRecurring(false);
                                             setCurrentEditTask(null);
+                                            // On mobile, redirect to tasks pane after canceling
+                                            setActivePanel('tasks');
                                         }}
                                         className="px-4 py-4 bg-[#eaedf0] text-[#111418] text-base font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px] touch-manipulation"
                                     >
