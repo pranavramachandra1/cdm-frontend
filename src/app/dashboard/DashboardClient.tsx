@@ -688,7 +688,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
       console.log('🗑️ Clearing list:', currentList.list_id);
       
       const response = await fetch(`/api/tasks/clear-list/${currentList.list_id}`, {
-        method: 'PATCH'
+        method: 'POST'
       });
 
       if (response.ok) {
@@ -697,11 +697,31 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         
         // Update tasks with the current tasks in the list (should be empty or contain remaining tasks)
         setTasks(updatedTasks);
+        console.log('Updated response', updatedTasks)
+        console.log('Just updated the gd tasks:', tasks)
         
-        // Reset selected task if it's no longer in the updated tasks
+        // Update the current list to reflect the new version
+        const updatedListResponse = await fetch(`/api/lists/${currentList.list_id}`);
+        if (updatedListResponse.ok) {
+          const updatedList = await updatedListResponse.json();
+          console.log('✅ Updated current list after clearing tasks:', updatedList);
+          setCurrentList(updatedList);
+          setCurrentViewingVersion(updatedList.version || 1);
+          console.log('bro this is the currentList:', currentList);
+          
+          // Update the lists array to reflect the new version
+          setLists(prev => prev.map(list => 
+            list.list_id === updatedList.list_id ? updatedList : list
+          ));
+        }
+
+        // Reset selected task if it's no longer in the rolled over tasks
         if (selectedTask && !updatedTasks.find((task: Task) => task.task_id === selectedTask.task_id)) {
           setSelectedTask(updatedTasks.length > 0 ? updatedTasks[0] : null);
         }
+
+        console.log('Current Tasks: ', tasks);
+        console.log('Current List: ', currentList);
         
         // Close any open forms
         setShowCreateTaskForm(false);
@@ -748,7 +768,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         if (updatedListResponse.ok) {
           const updatedList = await updatedListResponse.json();
           setCurrentList(updatedList);
-          
+          setCurrentViewingVersion(updatedList.version || 1);
           // Update the lists array to reflect the new version
           setLists(prev => prev.map(list => 
             list.list_id === updatedList.list_id ? updatedList : list

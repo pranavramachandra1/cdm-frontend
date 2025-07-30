@@ -88,6 +88,7 @@ export async function deleteList(listId: string): Promise<{ message: string; lis
 }
 
 export async function getUserLists(userId: string): Promise<ListResponse[]> {
+  console.log(`${process.env.BACKEND_BASE_URL}/lists/user/${userId}`)
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/lists/user/${userId}`, {
     headers: getHeaders(),
   });

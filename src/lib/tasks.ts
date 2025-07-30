@@ -148,7 +148,7 @@ export async function toggleTaskPriority(taskId: string): Promise<TaskResponse> 
 
 export async function clearListTasks(listId: string): Promise<TaskResponse[]> {
   const response = await fetch(`${BASE_URL}/tasks/clear-list/${listId}`, {
-    method: 'PATCH',
+    method: 'POST',
     headers: getHeaders(),
   });
 
