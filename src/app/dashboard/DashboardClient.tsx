@@ -879,7 +879,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 />
                             )}
                             <div>
-                                <h1 className="text-[#111418] text-base font-medium leading-normal">CarpeDoEm</h1>
+                                <h1 className="text-[#111418] text-base font-medium leading-normal">Taskable</h1>
                                 <p className="text-[#5e7387] text-xs">Welcome, {user.first_name}!</p>
                             </div>
                             </div>

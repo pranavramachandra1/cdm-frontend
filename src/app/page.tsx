@@ -21,11 +21,11 @@ export default function HomePage() {
                 <Image
                   alt="CarpoDoEm Logo"
                   className="h-8 w-8 mr-2"
-                  src="/images/salmon.png"
+                  src="/images/taskable_icon.png"
                   width={32}
                   height={32}
                 />
-                <h1 className="text-2xl font-bold text-accent">CarpeDoEm</h1>
+                <h1 className="text-2xl font-bold text-accent">Taskable</h1>
               </div>
               <div>
                 {/* <button 
@@ -47,13 +47,13 @@ export default function HomePage() {
           <main className="flex-grow flex items-center justify-center">
             <div className="text-center">
               <Image
-                alt="CarpoDoEm Main Logo"
-                className="h-100 w-100 mx-auto mb-16"
-                src="/images/carpedoem_logo.png"
+                alt="Taskable Main Logo"
+                className="h-30 w-100 mx-auto mb-16"
+                src="/images/taskable_logo_wide_no_bknd.png"
                 width={10000}
                 height={10000}
               />
-              <h1 className="text-5xl font-bold mb-4 text-accent">Actually, sieze the Day.</h1>
+              <h1 className="text-5xl font-bold mb-4 text-accent">Strike that sh*t off.</h1>
               <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
                 Take a realistic approach at managing lists you would normally write down.
               </p>

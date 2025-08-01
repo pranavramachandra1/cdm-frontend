@@ -8,7 +8,7 @@ const inter = Inter({
 })
 
 export const metadata = {
-  title: 'CarpeDoEm',
+  title: 'Taskable',
   icons: {
     icon: 'data:image/x-icon;base64,',
   }
