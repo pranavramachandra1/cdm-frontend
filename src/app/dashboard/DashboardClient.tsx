@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ListResponse } from '@/lib/lists';
 import { TaskCreate, TaskUpdate } from '@/lib/tasks';
+import MarkdownEditor from '@/components/MarkdownEditor';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
+import { useResizablePanel } from '@/hooks/useResizablePanel';
 
 interface GoogleUserInfo {
   id: string;
@@ -41,6 +44,7 @@ interface Task {
   createdAt: string;
   updatedAt: string;
   list_id: string;
+  description?: string;
 }
 
 
@@ -81,6 +85,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   // Task creation form state
   const [showCreateTaskForm, setShowCreateTaskForm] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskReminders, setNewTaskReminders] = useState<string[]>([]);
   const [newTaskIsPriority, setNewTaskIsPriority] = useState(false);
   const [newTaskIsRecurring, setNewTaskIsRecurring] = useState(false);
@@ -92,14 +97,34 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<'lists' | 'tasks' | 'details'>('tasks');
   
+  // Resizable panel hook
+  const { width: rightPanelWidth, isResizing, handleMouseDown } = useResizablePanel(
+    400, // default width
+    300, // min width  
+    600, // max width
+    'taskable-right-panel-width'
+  );
+  
   // Task editing form state:
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [showEditTaskForm, setShowEditTaskForm] = useState(false);
   const [currentEditTask, setCurrentEditTask] = useState<Task | null>(null);
   const [editTaskName, setEditTaskName] = useState('');
+  const [editTaskDescription, setEditTaskDescription] = useState('');
   const [editTaskReminders, setEditTaskReminders] = useState<string[]>([]);
   const [editTaskIsPriority, setEditTaskIsPriority] = useState(false);
   const [editTaskIsRecurring, setEditTaskIsRecurring] = useState(false);
+  
+  // Task Actions menu toggle state
+  const [showTaskActionsMenu, setShowTaskActionsMenu] = useState(false);
+  
+  // Right panel visibility state
+  const [showRightPanel, setShowRightPanel] = useState(false);
+
+  // Toggle right panel visibility
+  const toggleRightPanel = () => {
+    setShowRightPanel(!showRightPanel);
+  };
 
   // Fetch user's lists on component mount
   useEffect(() => {
@@ -147,6 +172,18 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [openDropdownId]);
+
+  // Handle escape key to close Task Actions menu
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showTaskActionsMenu) {
+        setShowTaskActionsMenu(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [showTaskActionsMenu]);
 
   // Consolidated effect: Handle current list changes and fetch tasks
   useEffect(() => {
@@ -419,6 +456,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         isPriority: newTaskIsPriority,
         isRecurring: newTaskIsRecurring,
         list_version: currentList.version || 1,
+        description: newTaskDescription.trim() || undefined,
       };
       
       console.log('📤 Sending task data:', taskData);
@@ -439,6 +477,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         
         // Reset form
         setNewTaskName('');
+        setNewTaskDescription('');
         setNewTaskReminders([]);
         setNewTaskIsPriority(false);
         setNewTaskIsRecurring(false);
@@ -507,6 +546,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
 
         // Reset form
         setEditTaskName('');
+        setEditTaskDescription('');
         setEditTaskReminders([]);
         setEditTaskIsPriority(false);
         setEditTaskIsRecurring(false);
@@ -552,6 +592,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         
         // Reset form
         setEditTaskName('');
+        setEditTaskDescription('');
         setEditTaskReminders([]);
         setEditTaskIsPriority(false);
         setEditTaskIsRecurring(false);
@@ -608,11 +649,13 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const startEditingTask = (task: Task) => {
     setCurrentEditTask(task);
     setEditTaskName(task.task_name);
+    setEditTaskDescription(task.description || '');
     setEditTaskReminders([...task.reminders]);
     setEditTaskIsPriority(task.isPriority);
     setEditTaskIsRecurring(task.isRecurring);
     setShowEditTaskForm(true);
     setShowCreateTaskForm(false); // Hide create form
+    setShowRightPanel(true); // Show right panel
   };
 
   const toggleTaskCompletion = async (taskId: string) => {
@@ -853,6 +896,15 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                 </div>
             </div>
 
+            {/* Plus/Arrow Button - Top Right Corner */}
+            <button
+                onClick={toggleRightPanel}
+                className="fixed top-4 right-4 z-30 p-3 bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[44px] min-w-[44px]"
+                title={showRightPanel ? "Hide Task Actions" : "Show Task Actions"}
+            >
+                {showRightPanel ? <ArrowRightIcon /> : <PlusIcon />}
+            </button>
+
             <div className="layout-container flex h-full grow flex-col lg:flex-row">
                 <div className="flex flex-1 lg:gap-1 lg:px-6 lg:py-5">
                     {/* Left Sidebar - Navigation */}
@@ -1042,7 +1094,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                     </div>
 
                     {/* Center - Task List */}
-                    <div className={`layout-content-container flex flex-col lg:max-w-[960px] flex-1 ${activePanel === 'tasks' ? 'block' : 'hidden'} lg:block pb-20 lg:pb-0`}>
+                    <div className={`layout-content-container flex flex-col flex-1 ${activePanel === 'tasks' ? 'block' : 'hidden'} lg:block pb-20 lg:pb-0`} style={{ marginRight: typeof window !== 'undefined' ? `${rightPanelWidth}px` : '400px' }}>
                         <div className="flex justify-between gap-2 px-4 py-3">
                             {/* Mobile back button */}
                             <button
@@ -1149,6 +1201,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 onClick={() => {
                                     setSelectedTask(task);
                                     setActivePanel('details');
+                                    setShowRightPanel(true);
                                 }}
                             >
                                 <p className={`text-[#111418] text-base font-medium leading-normal line-clamp-1 ${
@@ -1156,9 +1209,13 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 }`}>
                                 {task.task_name}
                                 </p>
-                                <p className="text-[#5e7387] text-sm font-normal leading-normal line-clamp-2">
-                                {task.isPriority ? '⭐ Priority Task' : 'Regular Task'}
-                                </p>
+                                <div className="text-[#5e7387] text-sm font-normal leading-normal line-clamp-2">
+                                {task.description ? (
+                                    <MarkdownRenderer content={task.description} />
+                                ) : (
+                                    <span>{task.isPriority ? '⭐ Priority Task' : 'Regular Task'}</span>
+                                )}
+                                </div>
                             </div>
                             </div>
                             <div className="shrink-0">
@@ -1180,7 +1237,17 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                     </div>
 
                     {/* Right Sidebar - Task Creation/Edit Form */}
-                    <div className={`layout-content-container flex flex-col lg:w-80 ${activePanel === 'details' ? 'block' : 'hidden'} lg:block absolute lg:relative inset-x-0 top-0 bottom-0 lg:inset-auto bg-white lg:bg-transparent z-10 lg:z-auto pb-20 lg:pb-0`}>
+                    <div 
+                        className={`layout-content-container flex flex-col ${(activePanel === 'details' && showRightPanel) ? 'block' : showRightPanel ? 'block' : 'hidden'} lg:${showRightPanel ? 'block' : 'hidden'} absolute lg:fixed inset-x-0 top-0 bottom-0 lg:inset-auto bg-white z-10 lg:z-auto pb-20 lg:pb-0 lg:top-0 lg:bottom-0 lg:right-0`}
+                        style={{ width: typeof window !== 'undefined' ? `${rightPanelWidth}px` : '400px' }}
+                    >
+                        {/* Resize Handle */}
+                        <div 
+                            className={`hidden lg:block absolute left-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors ${
+                                isResizing ? 'bg-blue-400' : 'bg-gray-300 hover:bg-gray-400'
+                            }`}
+                            onMouseDown={handleMouseDown}
+                        />
                         <div className="flex items-center justify-between px-4 pb-3 pt-5">
                             {/* Mobile back button */}
                             <button
@@ -1195,18 +1262,64 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                 {showCreateTaskForm ? 'Create New Task' : 
                                  showEditTaskForm ? 'Edit Task' : 'Task Actions'}
                             </h2>
-                            {!showCreateTaskForm && !showEditTaskForm && currentList && (
-                                <button
-                                    onClick={() => {
-                                      setShowCreateTaskForm(true);
-                                      setShowEditTaskForm(false);
-                                    }}
-                                    className="text-sm bg-[#b8cee4] hover:bg-[#a5c1db] text-[#111418] px-4 py-3 rounded-lg font-medium transition-colors min-h-[44px] touch-manipulation"
-                                >
-                                    + Add Task
-                                </button>
-                            )}
                         </div>
+                        
+                        {/* Task Actions Menu */}
+                        {!showCreateTaskForm && !showEditTaskForm && currentList && (
+                            <div className="flex flex-col gap-3 px-4 pb-4">
+                                <div className="bg-gray-50 rounded-lg p-3">
+                                    <h3 className="text-[#111418] text-sm font-semibold mb-3">Quick Actions</h3>
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setShowCreateTaskForm(true);
+                                                setShowEditTaskForm(false);
+                                                setShowRightPanel(true);
+                                            }}
+                                            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white transition-colors text-left min-h-[44px] touch-manipulation"
+                                        >
+                                            <div className="text-[#111418] flex-shrink-0">
+                                                <PlusIcon />
+                                            </div>
+                                            <div>
+                                                <p className="text-[#111418] text-sm font-medium">Add New Task</p>
+                                                <p className="text-[#5e7387] text-xs">Create a new task with description</p>
+                                            </div>
+                                        </button>
+                                        
+                                        <button
+                                            onClick={() => {
+                                                handleRolloverList();
+                                            }}
+                                            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white transition-colors text-left min-h-[44px] touch-manipulation"
+                                        >
+                                            <div className="text-[#111418] flex-shrink-0">
+                                                <RecycleIcon />
+                                            </div>
+                                            <div>
+                                                <p className="text-[#111418] text-sm font-medium">Rollover List</p>
+                                                <p className="text-[#5e7387] text-xs">Move incomplete tasks to new version</p>
+                                            </div>
+                                        </button>
+                                        
+                                        <button
+                                            onClick={() => {
+                                                handleClearList();
+                                            }}
+                                            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white transition-colors text-left min-h-[44px] touch-manipulation"
+                                        >
+                                            <div className="text-[#111418] flex-shrink-0">
+                                                <SignOutIcon />
+                                            </div>
+                                            <div>
+                                                <p className="text-[#111418] text-sm font-medium">Clear List</p>
+                                                <p className="text-[#5e7387] text-xs">Remove all tasks from this list</p>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         
                         {/* Task Creation Form */}
                         {showCreateTaskForm && currentList ? (
@@ -1224,6 +1337,17 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         autoComplete="off"
                                         autoCorrect="off"
                                         autoCapitalize="sentences"
+                                    />
+                                </div>
+
+                                {/* Description Field */}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[#111418] text-base font-medium">Description</label>
+                                    <MarkdownEditor
+                                        value={newTaskDescription}
+                                        onChange={setNewTaskDescription}
+                                        placeholder="Add a description for this task (optional)..."
+                                        rows={3}
                                     />
                                 </div>
 
@@ -1305,9 +1429,11 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         onClick={() => {
                                             setShowCreateTaskForm(false);
                                             setNewTaskName('');
+                                            setNewTaskDescription('');
                                             setNewTaskReminders([]);
                                             setNewTaskIsPriority(false);
                                             setNewTaskIsRecurring(false);
+                                            setShowRightPanel(false); // Hide right panel
                                             // On mobile, redirect to tasks pane after canceling
                                             setActivePanel('tasks');
                                         }}
@@ -1332,6 +1458,17 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         autoComplete="off"
                                         autoCorrect="off"
                                         autoCapitalize="sentences"
+                                    />
+                                </div>
+
+                                {/* Description Field */}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[#111418] text-base font-medium">Description</label>
+                                    <MarkdownEditor
+                                        value={editTaskDescription}
+                                        onChange={setEditTaskDescription}
+                                        placeholder="Add a description for this task (optional)..."
+                                        rows={3}
                                     />
                                 </div>
 
@@ -1419,10 +1556,12 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         onClick={() => {
                                             setShowEditTaskForm(false);
                                             setEditTaskName('');
+                                            setEditTaskDescription('');
                                             setEditTaskReminders([]);
                                             setEditTaskIsPriority(false);
                                             setEditTaskIsRecurring(false);
                                             setCurrentEditTask(null);
+                                            setShowRightPanel(false); // Hide right panel
                                             // On mobile, redirect to tasks pane after canceling
                                             setActivePanel('tasks');
                                         }}
@@ -1489,4 +1628,18 @@ const TriangleRightIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="12px" height="12px" fill="currentColor" viewBox="0 0 256 256">
     <path d="M106.94,215.39a8,8,0,0,1-1.34-8.95L133.29,128,105.6,49.56a8,8,0,0,1,15.18-5.34l32,92a8,8,0,0,1,0,5.56l-32,92A8,8,0,0,1,106.94,215.39Z"></path>
   </svg>
+);
+
+const PlusIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <div className="text-[#111418]" data-icon="ArrowRight" data-size="24px" data-weight="regular">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+      <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path>
+    </svg>
+  </div>
 );

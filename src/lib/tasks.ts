@@ -21,6 +21,7 @@ export interface TaskCreate {
   isPriority: boolean;
   isRecurring: boolean;
   list_version: number;
+  description?: string;
 }
 
 export interface TaskUpdate {
@@ -34,6 +35,7 @@ export interface TaskUpdate {
   isRecurring?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  description?: string;
 }
 
 export interface TaskResponse {
@@ -47,6 +49,7 @@ export interface TaskResponse {
   isRecurring: boolean;
   createdAt: string;
   updatedAt: string;
+  description?: string;
 }
 
 export async function createTask(taskData: TaskCreate): Promise<TaskResponse> {
