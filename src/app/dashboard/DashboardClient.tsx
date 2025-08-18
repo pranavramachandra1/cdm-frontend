@@ -58,6 +58,9 @@ interface DashboardClientProps {
 export default function DashboardClient({ userSessionData }: DashboardClientProps) {
   console.log('🚀 CLIENT: DashboardClient rendering');
   const { user, google } = userSessionData;
+
+  console.log(user);
+  console.log(google);
   
   console.log('🚀 DashboardClient rendering with user:', user);
 
@@ -120,6 +123,9 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   
   // Right panel visibility state
   const [showRightPanel, setShowRightPanel] = useState(false);
+
+  // Priority filter state
+  const [showPriorityOnly, setShowPriorityOnly] = useState(false);
 
   // Toggle right panel visibility
   const toggleRightPanel = () => {
@@ -1130,6 +1136,20 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             >
                             <SignOutIcon />
                             </button>
+                            <button 
+                                className={`p-3 rounded-lg transition-colors min-h-[44px] min-w-[44px] ${
+                                  currentList 
+                                    ? showPriorityOnly 
+                                      ? 'text-[#111418] bg-[#b8cee4] hover:bg-[#a5c1db]' 
+                                      : 'text-[#111418] hover:bg-[#eaedf0]'
+                                    : 'text-[#9ca3af] cursor-not-allowed'
+                                }`}
+                                title={showPriorityOnly ? "Show all tasks" : "Show priority tasks only"}
+                                onClick={() => setShowPriorityOnly(!showPriorityOnly)}
+                                disabled={!currentList}
+                            >
+                            {showPriorityOnly ? <StarIcon /> : <StarOutlineIcon />}
+                            </button>
                         </div>
                         </div>
                         <div className="flex items-center justify-between px-4 pb-3 pt-5">
@@ -1169,7 +1189,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             )}
                         </div>
                         
-                        {tasks.map((task) => (
+                        {(showPriorityOnly ? tasks.filter(task => task.isPriority) : tasks).map((task) => (
                         <div
                             key={task.task_id}
                             className={`flex items-center gap-4 bg-gray-50 px-4 min-h-[72px] py-3 justify-between hover:bg-[#eaedf0] touch-manipulation ${
@@ -1642,4 +1662,16 @@ const ArrowRightIcon = () => (
       <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path>
     </svg>
   </div>
+);
+
+const StarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M234.5,114.38l-45.1,39.36,13.51,58.6a16,16,0,0,1-23.84,17.34l-51.11-31-51,31a16,16,0,0,1-23.84-17.34L66.61,153.8,21.5,114.38a16,16,0,0,1,9.11-28.06l59.46-5.15,23.21-55.36a15.95,15.95,0,0,1,29.44,0L165.93,81.17l59.46,5.15A16,16,0,0,1,234.5,114.38Z"></path>
+  </svg>
+);
+
+const StarOutlineIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M229.06,108.79l-48.7,42.41L193.49,211a8,8,0,0,1-12.28,9.09L128,184.69,74.79,220.09A8,8,0,0,1,62.51,211l13.13-59.78L27,108.79a8,8,0,0,1,4.56-14l61.26-5.31L115.9,31.22a8,8,0,0,1,14.2,0l23.08,58.2L214.44,94.73A8,8,0,0,1,229.06,108.79Zm-15.1-2L153.89,102.24a8,8,0,0,1-6.31-4.61L128,43.39,108.42,97.63a8,8,0,0,1-6.31,4.61L42,106.73l38.49,33.52a8,8,0,0,1,2.4,7.4L71.73,195.78,118,166.21a8,8,0,0,1,10.06,0l46.26,29.57L163.11,147.65a8,8,0,0,1,2.4-7.4Z"></path>
+  </svg>
 );
