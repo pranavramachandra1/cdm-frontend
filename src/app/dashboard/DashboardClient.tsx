@@ -517,6 +517,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     console.log('✅ Editing task:', { 
       taskId,
       taskName: editTaskName,
+      description: editTaskDescription,
       reminders: editTaskReminders,
       isPriority: editTaskIsPriority,
       isRecurring: editTaskIsRecurring
@@ -530,6 +531,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
         reminders: editTaskReminders,
         isPriority: editTaskIsPriority,
         isRecurring: editTaskIsRecurring,
+        description: editTaskDescription.trim() || undefined,
       };
 
       console.log('📤 Updating task data:', taskEditData);
