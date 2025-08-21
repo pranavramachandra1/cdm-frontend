@@ -112,6 +112,10 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [showEditTaskForm, setShowEditTaskForm] = useState(false);
   const [currentEditTask, setCurrentEditTask] = useState<Task | null>(null);
+  
+  // Task viewing state:
+  const [showViewTaskForm, setShowViewTaskForm] = useState(false);
+  const [currentViewTask, setCurrentViewTask] = useState<Task | null>(null);
   const [editTaskName, setEditTaskName] = useState('');
   const [editTaskDescription, setEditTaskDescription] = useState('');
   const [editTaskReminders, setEditTaskReminders] = useState<string[]>([]);
@@ -663,6 +667,16 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     setEditTaskIsRecurring(task.isRecurring);
     setShowEditTaskForm(true);
     setShowCreateTaskForm(false); // Hide create form
+    setShowViewTaskForm(false); // Hide view form
+    setShowRightPanel(true); // Show right panel
+  };
+
+  // Function to start viewing a task
+  const startViewingTask = (task: Task) => {
+    setCurrentViewTask(task);
+    setShowViewTaskForm(true);
+    setShowEditTaskForm(false); // Hide edit form
+    setShowCreateTaskForm(false); // Hide create form
     setShowRightPanel(true); // Show right panel
   };
 
@@ -1102,7 +1116,9 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                     </div>
 
                     {/* Center - Task List */}
-                    <div className={`layout-content-container flex flex-col flex-1 ${activePanel === 'tasks' ? 'block' : 'hidden'} lg:block pb-20 lg:pb-0`} style={{ marginRight: typeof window !== 'undefined' ? `${rightPanelWidth}px` : '400px' }}>
+                    <div className={`layout-content-container flex flex-col flex-1 ${activePanel === 'tasks' ? 'block' : 'hidden'} lg:block pb-20 lg:pb-0`} style={{ 
+                        marginRight: showRightPanel && typeof window !== 'undefined' ? `${rightPanelWidth}px` : showRightPanel ? '400px' : '0px' 
+                    }}>
                         <div className="flex justify-between gap-2 px-4 py-3">
                             {/* Mobile back button */}
                             <button
@@ -1241,7 +1257,18 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </div>
                             </div>
                             <div className="shrink-0">
-                            <div className="text-[#111418] flex size-7 items-center justify-center">
+                            <div className="text-[#111418] flex items-center justify-center gap-1">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        startViewingTask(task);
+                                        setActivePanel('details');
+                                    }}
+                                    className="hover:bg-[#eaedf0] p-3 rounded-lg transition-colors min-h-[44px] min-w-[44px] touch-manipulation"
+                                    title="View task details"
+                                    >
+                                    <EyeIcon />
+                                </button>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -1249,6 +1276,7 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         setActivePanel('details');
                                     }}
                                     className="hover:bg-[#eaedf0] p-3 rounded-lg transition-colors min-h-[44px] min-w-[44px] touch-manipulation"
+                                    title="Edit task"
                                     >
                                     <PencilIcon />
                                 </button>
@@ -1282,12 +1310,13 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </button>
                             <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em]">
                                 {showCreateTaskForm ? 'Create New Task' : 
-                                 showEditTaskForm ? 'Edit Task' : 'Task Actions'}
+                                 showEditTaskForm ? 'Edit Task' : 
+                                 showViewTaskForm ? 'View Task' : 'Task Actions'}
                             </h2>
                         </div>
                         
                         {/* Task Actions Menu */}
-                        {!showCreateTaskForm && !showEditTaskForm && currentList && (
+                        {!showCreateTaskForm && !showEditTaskForm && !showViewTaskForm && currentList && (
                             <div className="flex flex-col gap-3 px-4 pb-4">
                                 <div className="bg-gray-50 rounded-lg p-3">
                                     <h3 className="text-[#111418] text-sm font-semibold mb-3">Quick Actions</h3>
@@ -1455,6 +1484,8 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                             setNewTaskReminders([]);
                                             setNewTaskIsPriority(false);
                                             setNewTaskIsRecurring(false);
+                                            setShowViewTaskForm(false);
+                                            setCurrentViewTask(null);
                                             setShowRightPanel(false); // Hide right panel
                                             // On mobile, redirect to tasks pane after canceling
                                             setActivePanel('tasks');
@@ -1583,6 +1614,8 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                             setEditTaskIsPriority(false);
                                             setEditTaskIsRecurring(false);
                                             setCurrentEditTask(null);
+                                            setShowViewTaskForm(false);
+                                            setCurrentViewTask(null);
                                             setShowRightPanel(false); // Hide right panel
                                             // On mobile, redirect to tasks pane after canceling
                                             setActivePanel('tasks');
@@ -1590,6 +1623,106 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                                         className="px-4 py-4 bg-[#eaedf0] text-[#111418] text-base font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px] touch-manipulation"
                                     >
                                         Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        ) : showViewTaskForm && currentViewTask ? (
+                            <div className="flex flex-col gap-4 px-4 pb-4">
+                                {/* Task Name Display */}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[#111418] text-base font-medium">Task Name</label>
+                                    <div className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base bg-gray-50 min-h-[44px] flex items-center">
+                                        {currentViewTask.task_name}
+                                    </div>
+                                </div>
+
+                                {/* Description Display */}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[#111418] text-base font-medium">Description</label>
+                                    <div className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base bg-gray-50 min-h-[100px]">
+                                        {currentViewTask.description ? (
+                                            <MarkdownRenderer content={currentViewTask.description} />
+                                        ) : (
+                                            <span className="text-[#5e7387] italic">No description</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Reminders Display */}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[#111418] text-base font-medium">Reminders</label>
+                                    <div className="w-full px-4 py-4 border border-[#d5dbe2] rounded-xl text-base bg-gray-50 min-h-[44px]">
+                                        {currentViewTask.reminders.length > 0 ? (
+                                            <div className="flex flex-col gap-2">
+                                                {currentViewTask.reminders.map((reminder, index) => (
+                                                    <div key={index} className="text-sm">
+                                                        📅 {new Date(reminder).toLocaleString()}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-[#5e7387] italic">No reminders set</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Priority Display */}
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                                        currentViewTask.isPriority 
+                                            ? 'bg-[#b8cee4] border-[#b8cee4]' 
+                                            : 'border-[#d5dbe2] bg-white'
+                                    }`}>
+                                        {currentViewTask.isPriority && (
+                                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <label className="text-[#111418] text-base font-medium">
+                                        High Priority {currentViewTask.isPriority && '⭐'}
+                                    </label>
+                                </div>
+
+                                {/* Recurring Display */}
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                                        currentViewTask.isRecurring 
+                                            ? 'bg-[#b8cee4] border-[#b8cee4]' 
+                                            : 'border-[#d5dbe2] bg-white'
+                                    }`}>
+                                        {currentViewTask.isRecurring && (
+                                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <label className="text-[#111418] text-base font-medium">
+                                        Recurring Task {currentViewTask.isRecurring && '🔄'}
+                                    </label>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        onClick={() => {
+                                            startEditingTask(currentViewTask);
+                                        }}
+                                        className="flex-1 px-4 py-4 bg-[#b8cee4] text-[#111418] text-base font-medium rounded-xl hover:bg-[#a5c1db] transition-colors min-h-[44px] touch-manipulation"
+                                    >
+                                        Edit Task
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowViewTaskForm(false);
+                                            setCurrentViewTask(null);
+                                            setShowRightPanel(false); // Hide right panel
+                                            // On mobile, redirect to tasks pane after closing
+                                            setActivePanel('tasks');
+                                        }}
+                                        className="px-4 py-4 bg-[#eaedf0] text-[#111418] text-base font-medium rounded-xl hover:bg-[#d5dbe2] transition-colors min-h-[44px] touch-manipulation"
+                                    >
+                                        Close
                                     </button>
                                 </div>
                             </div>
@@ -1675,5 +1808,11 @@ const StarIcon = () => (
 const StarOutlineIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
     <path d="M229.06,108.79l-48.7,42.41L193.49,211a8,8,0,0,1-12.28,9.09L128,184.69,74.79,220.09A8,8,0,0,1,62.51,211l13.13-59.78L27,108.79a8,8,0,0,1,4.56-14l61.26-5.31L115.9,31.22a8,8,0,0,1,14.2,0l23.08,58.2L214.44,94.73A8,8,0,0,1,229.06,108.79Zm-15.1-2L153.89,102.24a8,8,0,0,1-6.31-4.61L128,43.39,108.42,97.63a8,8,0,0,1-6.31,4.61L42,106.73l38.49,33.52a8,8,0,0,1,2.4,7.4L71.73,195.78,118,166.21a8,8,0,0,1,10.06,0l46.26,29.57L163.11,147.65a8,8,0,0,1,2.4-7.4Z"></path>
+  </svg>
+);
+
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+    <path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"></path>
   </svg>
 );
