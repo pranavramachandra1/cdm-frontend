@@ -23,6 +23,7 @@ export interface ListUpdate {
   created_at?: string;
   last_updated_at?: string;
   version?: number;
+  visibility?: 'PRIVATE' | 'PUBLIC' | 'ORGANIZATION_ONLY';
 }
 
 export interface ListResponse {
@@ -32,6 +33,8 @@ export interface ListResponse {
   created_at: string;
   last_updated_at: string;
   version: number;
+  visibility?: 'PRIVATE' | 'PUBLIC' | 'ORGANIZATION_ONLY';
+  share_token?: string;
 }
 
 export async function createList(listData: ListCreate): Promise<ListResponse> {
@@ -152,4 +155,70 @@ export async function getListStats(listId: string): Promise<ListStats> {
   }
 
   return response.json();
+}
+
+export interface SharedListVerificationResult {
+  success: boolean;
+  list?: ListResponse;
+  error?: {
+    status: number;
+    message: string;
+  };
+}
+
+export async function updateListVisibility(
+  listId: string, 
+  visibility: 'PRIVATE' | 'PUBLIC' | 'ORGANIZATION_ONLY'
+): Promise<ListResponse> {
+  const response = await fetch(`/api/lists/${listId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ visibility }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update list visibility: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+export async function verifySharedListAccess(
+  shareToken: string, 
+  requesterId: string
+): Promise<SharedListVerificationResult> {
+  try {
+    const response = await fetch(`/api/lists/shared/${shareToken}/user/${requesterId}`);
+
+    if (response.ok) {
+      const list = await response.json();
+      return {
+        success: true,
+        list: list
+      };
+    } else {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: {
+          status: response.status,
+          message: errorData.error || (response.status === 403 
+            ? "You don't have permission to view this list"
+            : response.status === 404
+            ? "This list doesn't exist or the link is invalid"
+            : "Unable to load list. Please try again.")
+        }
+      };
+    }
+  } catch {
+    return {
+      success: false,
+      error: {
+        status: 500,
+        message: "Unable to load list. Please try again."
+      }
+    };
+  }
 }

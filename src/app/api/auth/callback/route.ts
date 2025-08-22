@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const state = searchParams.get('state'); // Get the redirect URL from state parameter
 
   if (error) {
     return NextResponse.redirect(new URL('/?error=access_denied', request.url));
@@ -76,10 +77,13 @@ export async function GET(request: NextRequest) {
       isNewUser: !verified_user, // Will be false since we either found or created user
     };
 
+    // Determine redirect destination - use state parameter if available, otherwise dashboard
+    const redirectUrl = state ? decodeURIComponent(state) : '/dashboard';
+    
     // Set user session/cookie with complete session data
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    const response = NextResponse.redirect(new URL(redirectUrl, request.url));
     response.cookies.set('user_session', JSON.stringify(sessionData), {
-      httpOnly: true,
+      httpOnly: false, // Changed to false so client can read it
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       sameSite: 'lax',

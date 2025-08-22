@@ -6,6 +6,7 @@ import { ListResponse } from '@/lib/lists';
 import { TaskCreate, TaskUpdate } from '@/lib/tasks';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+import ListVisibilityControl from '@/components/ListVisibilityControl';
 import { useResizablePanel } from '@/hooks/useResizablePanel';
 
 interface GoogleUserInfo {
@@ -680,6 +681,14 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
     setShowRightPanel(true); // Show right panel
   };
 
+  // Handle list visibility update
+  const handleListVisibilityUpdate = (updatedList: ListResponse) => {
+    setLists(prev => prev.map(list => 
+      list.list_id === updatedList.list_id ? updatedList : list
+    ));
+    setCurrentList(updatedList);
+  };
+
   const toggleTaskCompletion = async (taskId: string) => {
     try {
       console.log('🔄 Toggling task completion for:', taskId);
@@ -1170,12 +1179,20 @@ export default function DashboardClient({ userSessionData }: DashboardClientProp
                             </button>
                         </div>
                         </div>
-                        <div className="flex items-center justify-between px-4 pb-3 pt-5">
-                            <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em]">
-                                {currentList?.list_name}
-                            </h2>
+                        <div className="flex items-start justify-between px-4 pb-3 pt-5">
+                            <div className="flex-1 min-w-0">
+                                <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em] mb-2">
+                                    {currentList?.list_name}
+                                </h2>
+                                {currentList && (
+                                    <ListVisibilityControl 
+                                        list={currentList} 
+                                        onVisibilityUpdate={handleListVisibilityUpdate}
+                                    />
+                                )}
+                            </div>
                             {currentList && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 ml-4 mt-1">
                                     <button
                                         onClick={navigateToNextVersion}
                                         disabled={currentViewingVersion >= currentList.version}
